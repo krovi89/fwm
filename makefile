@@ -9,7 +9,8 @@ WM_OBJDIR ?= obj
 WM_OUTDIR ?= out
 
 WM_OUT := fwm
-WM_SRC := fwm.c
+WM_SRC := fwm.c \
+          log.c
 WM_OBJ := $(patsubst %.c,obj/%.o,$(WM_SRC))
 
 VPATH := $(WM_SRCDIR)
@@ -31,7 +32,8 @@ $(WM_OBJDIR)/%.o: %.c
 	@echo [CC] $@: $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(WM_OBJDIR)/fwm.o: fwm.c fwm.h
+$(WM_OBJDIR)/fwm.o: fwm.c fwm.h log.h
+$(WM_OBJDIR)/log.o: log.h
 $(WM_OBJ): makefile
 
 run:

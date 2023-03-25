@@ -1,17 +1,26 @@
 #ifndef FWM_H
 #define FWM_H
 
+#include <stdbool.h>
+
 #include <xcb/xcb.h>
+#include <xcb/xproto.h>
+
+#define ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \
+                        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
 
 struct fwm {
 	xcb_connection_t *conn;
 	xcb_screen_t     *screen;
+	xcb_window_t      root;
+
+	bool              debug_logging;
 };
 
 extern struct fwm fwm;
 
-int fwm_initialize(void);
-int fwm_connection_check_error(void);
+void fwm_initialize(void);
+void fwm_register_events(void);
 void fwm_exit(int status);
 
 #endif
