@@ -12,15 +12,26 @@
 #include <sys/un.h>
 
 #include "fwm.h"
+#include "events.h"
 #include "log.h"
 
 struct fwm fwm;
 
 int main(void) {
 	fwm_initialize();
-	fwm_register_events();
+	fwm_initialize_socket();
+	fwm_initialize_event_handlers();
 
-	fwm_exit(0);
+	xcb_generic_event_t *event;
+	for (;;) {
+		while ((event = xcb_poll_for_event(fwm.conn)) != NULL) {
+			fwm_handle_event(event);
+			free(event);
+		}
+
+		fwm_connection_has_error();
+		xcb_flush(fwm.conn);
+	}
 }
 
 void fwm_initialize(void) {
@@ -35,7 +46,12 @@ void fwm_initialize(void) {
 	fwm.screen = screen_iterator.data;
 	fwm.root = fwm.screen->root;
 
-	fwm_initialize_socket();
+	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
+	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
+	                                                                                    XCB_CW_EVENT_MASK,
+	                                                                                    &(uint32_t){ ROOT_EVENT_MASK }));
+	if (error)
+		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
 }
 
 void fwm_initialize_socket(void) {
@@ -44,8 +60,7 @@ void fwm_initialize_socket(void) {
 
 	char *host_name;
 	int display_number, screen_number;
-	/* don't need to check for errors in parsing the display string */
-	/* because fwm_initialize() exits with XCB_CONN_CLOSED_PARSE_ERR if there are any */
+	/* fwm_initialize already checks for errors with the display string */
 	xcb_parse_display(NULL, &host_name, &display_number, &screen_number);
 
 	fwm.socket_address.sun_family = AF_UNIX;
@@ -74,27 +89,18 @@ void fwm_initialize_socket(void) {
 void fwm_connection_has_error(void) {
 	int error_code = xcb_connection_has_error(fwm.conn);
 	if (error_code) {
-		char *error_strings[XCB_CONN_CLOSED_INVALID_SCREEN + 1] = {
+		char *error_strings[XCB_CONN_CLOSED_FDPASSING_FAILED + 1] = {
 		                   [XCB_CONN_ERROR]                   = "XCB_CONN_ERROR",
 		                   [XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "XCB_CONN_CLOSED_EXT_NOTSUPPORTED",
 		                   [XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "XCB_CONN_CLOSED_MEM_INSUFFICIENT",
 		                   [XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "XCB_CONN_CLOSED_REQ_LEN_EXCEED",
 		                   [XCB_CONN_CLOSED_PARSE_ERR]        = "XCB_CONN_CLOSED_PARSE_ERR",
-		                   [XCB_CONN_CLOSED_INVALID_SCREEN]   = "XCB_CONN_CLOSED_INVALID_SCREEN"
+		                   [XCB_CONN_CLOSED_INVALID_SCREEN]   = "XCB_CONN_CLOSED_INVALID_SCREEN",
+		                   [XCB_CONN_CLOSED_FDPASSING_FAILED] = "XCB_CONN_CLOSED_FDPASSING_FAILED",
 		};
 
 		fwm_log_error_exit(error_code, "Could not connect to the X server: %s (%u).\n", error_strings[error_code], error_code);
 	}
-}
-
-void fwm_register_events(void) {
-	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
-	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
-	                                                                                    XCB_CW_EVENT_MASK,
-	                                                                                    &(uint32_t){ ROOT_EVENT_MASK }));
-
-	if (error)
-		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
 }
 
 void fwm_exit(int status) {

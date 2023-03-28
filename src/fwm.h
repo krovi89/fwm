@@ -25,7 +25,6 @@ extern struct fwm fwm;
 void fwm_initialize(void);
 void fwm_initialize_socket(void);
 void fwm_connection_has_error(void);
-void fwm_register_events(void);
 void fwm_exit(int status);
 
 #endif
