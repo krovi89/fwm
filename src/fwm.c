@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <sys/poll.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/randr.h>
 
-#include <fcntl.h>
 #include <unistd.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -22,11 +23,20 @@ int main(void) {
 	fwm_initialize_socket();
 	fwm_initialize_event_handlers();
 
+	struct pollfd poll_fds[2] = {
+		{ .fd = fwm.conn_fd,   .events = POLLIN },
+		{ .fd = fwm.socket_fd, .events = POLLIN }
+	};
+
 	xcb_generic_event_t *event;
 	for (;;) {
-		while ((event = xcb_poll_for_event(fwm.conn)) != NULL) {
-			fwm_handle_event(event);
-			free(event);
+		if (poll(poll_fds, sizeof poll_fds / sizeof poll_fds[0], -1) > 0) {
+			if (poll_fds[0].revents & POLLIN) {
+				while ((event = xcb_poll_for_event(fwm.conn))) {
+					fwm_handle_event(event);
+					free(event);
+				}
+			}
 		}
 
 		fwm_connection_has_error();
@@ -45,6 +55,8 @@ void fwm_initialize(void) {
 
 	fwm.screen = screen_iterator.data;
 	fwm.root = fwm.screen->root;
+
+	fwm.conn_fd = xcb_get_file_descriptor(fwm.conn);
 
 	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
 	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
@@ -81,9 +93,6 @@ void fwm_initialize_socket(void) {
 
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Listening to the socket failed.\n");
-
-	if (fcntl(fwm.socket_fd, F_SETFL, fcntl(fwm.socket_fd, F_GETFL) | O_NONBLOCK) == -1)
-		fwm_log_error_exit(EXIT_FAILURE, "Failed to set O_NONBLOCK on the socket file descriptor.\n");
 }
 
 void fwm_connection_has_error(void) {

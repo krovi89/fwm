@@ -16,6 +16,8 @@ struct fwm {
 	xcb_screen_t       *screen;
 	xcb_window_t        root;
 
+	int                 conn_fd;
+
 	int                 socket_fd;
 	struct sockaddr_un  socket_address;
 };
