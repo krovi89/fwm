@@ -33,7 +33,7 @@ $(WM_OBJDIR)/%.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 $(WM_OBJDIR)/fwm.o: fwm.c fwm.h log.h
-$(WM_OBJDIR)/log.o: log.h
+$(WM_OBJDIR)/log.o: fwm.h log.h
 $(WM_OBJ): makefile
 
 run:

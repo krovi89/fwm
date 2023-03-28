@@ -1,10 +1,8 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <stdio.h>
-#include <stdarg.h>
-
-int fwm_log(FILE *stream, char *type, char *type_escape, char *message_escape, char *format, va_list argument_list);
 int fwm_log_error(char *format, ...);
+void fwm_log_error_exit(int ret, char *format, ...);
+int fwm_log_warning(char *format, ...);
 
 #endif
