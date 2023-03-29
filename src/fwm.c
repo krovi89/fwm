@@ -4,22 +4,22 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <xcb/xcb.h>
-#include <xcb/xproto.h>
-#include <xcb/randr.h>
-
 #include <unistd.h>
 #include <poll.h>
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <xcb/xcb.h>
+#include <xcb/xproto.h>
+#include <xcb/randr.h>
+
 #include "fwm.h"
 #include "events.h"
+#include "messages.h"
 #include "log.h"
 
 struct fwm fwm;
-const char message_header[3] = { 'f', 'w', 'm' };
 
 static struct pollfd poll_fds[2 + FWM_MAX_CLIENTS];
 static struct pollfd *client_fds = poll_fds + 2;
@@ -43,7 +43,7 @@ int main(void) {
 	}
 
 	/* very oversized message buffer */
-	char message_body[256];
+	unsigned char message[255];
 
 	xcb_generic_event_t *event;
 	for (;;) {
@@ -65,12 +65,14 @@ int main(void) {
 				}
 
 				if (client_fds[i].revents & POLLIN) {
-					int ret = recv(client_fds[i].fd, message_body, sizeof message_body, 0);
+					int length = recv(client_fds[i].fd, message, sizeof message, 0);
 
 					/* The message must at least contain the header, and a request number.
-					   Otherwise, it's not a valid message */
-					if (ret < (int) (sizeof message_header + 1)) continue;
-					if (memcmp(message_header, message_body, sizeof message_header)) continue;
+					   Otherwise, it's not valid */
+					if (length < (int) (sizeof message_header + 1)) continue;
+					if (memcmp(message_header, message, sizeof message_header)) continue;
+
+					fwm_process_message(message, length);
 
 					/* Set the time to 0, so the client never times out */
 					client_times[i] = 0;

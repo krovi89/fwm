@@ -25,7 +25,6 @@ struct fwm {
 };
 
 extern struct fwm fwm;
-extern const char message_header[3];
 
 void fwm_initialize(void);
 void fwm_initialize_socket(void);
