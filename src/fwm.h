@@ -8,21 +8,24 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
+#define FWM_MAX_CLIENTS 30
+#define FWM_CLIENT_TIMEOUT 5
+
 #define ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \
                         XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
 
 struct fwm {
 	xcb_connection_t   *conn;
+	int                 conn_fd;
 	xcb_screen_t       *screen;
 	xcb_window_t        root;
-
-	int                 conn_fd;
 
 	int                 socket_fd;
 	struct sockaddr_un  socket_address;
 };
 
 extern struct fwm fwm;
+extern const char message_header[3];
 
 void fwm_initialize(void);
 void fwm_initialize_socket(void);

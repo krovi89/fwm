@@ -2,7 +2,7 @@ CC := gcc
 
 CFLAGS  += -std=c99 -pedantic -Wall -Wextra
 LDFLAGS +=
-LDLIBS   = -lxcb -lxcb-randr
+LDLIBS   = -lxcb
 
 WM_SRCDIR ?= src
 WM_OBJDIR ?= obj
@@ -33,9 +33,9 @@ $(WM_OBJDIR)/%.o: %.c
 	@echo [CC] $@: $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(WM_OBJDIR)/fwm.o:    fwm.c fwm.h events.h log.h
-$(WM_OBJDIR)/events.o: events.c fwm.h
-$(WM_OBJDIR)/log.o:    log.c fwm.h log.h
+$(WM_OBJDIR)/fwm.o: fwm.c fwm.h events.h log.h
+$(WM_OBJDIR)/events.o: events.c events.h fwm.h
+$(WM_OBJDIR)/log.o: log.c log.h fwm.h
 $(WM_OBJ): makefile
 
 run:
