@@ -2,6 +2,7 @@
 #define MESSAGES_H
 
 #define FWM_MESSAGE_TYPE_CONFIGURE 1
+#define FWM_MESSAGE_TYPE_EXIT 255
 
 extern const unsigned char message_header[3];
 

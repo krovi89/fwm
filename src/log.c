@@ -38,3 +38,12 @@ int fwm_log_warning(char *format, ...) {
 
 	return ret;
 }
+
+int fwm_log_info(char *format, ...) {
+	va_list argument_list;
+	va_start(argument_list, format);
+	int ret = fwm_log(stdout, "INFO", /* bold blu */ "\033[34;1m", /* reset */ "\033[0m", format, argument_list);
+	va_end(argument_list);
+
+	return ret;
+}

@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 #include <poll.h>
+#include <signal.h>
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -23,15 +24,12 @@ struct fwm fwm;
 
 static struct pollfd poll_fds[2 + FWM_MAX_CLIENTS];
 static struct pollfd *client_fds = poll_fds + 2;
+static int client_fds_num = 0;
 
 int main(void) {
 	fwm_initialize();
 	fwm_initialize_socket();
 	fwm_initialize_event_handlers();
-
-	int client_fds_num = 0;
-
-	time_t client_times[FWM_MAX_CLIENTS] = {0};
 
 	poll_fds[0].fd = fwm.conn_fd;
 	poll_fds[1].fd = fwm.socket_fd;
@@ -41,6 +39,8 @@ int main(void) {
 		client_fds[i].fd = -1;
 		client_fds[i].events = POLLIN;
 	}
+
+	time_t client_times[FWM_MAX_CLIENTS] = {0};
 
 	/* very oversized message buffer */
 	unsigned char message[255];
@@ -180,12 +180,15 @@ void fwm_connection_has_error(void) {
 }
 
 void fwm_exit(int status) {
-	close(fwm.socket_fd);
-	for (int i = 0; i < FWM_MAX_CLIENTS; i++) {
+	for (int i = 0; i < client_fds_num; i++) {
 		close(client_fds[i].fd);
 	}
 
+	close(fwm.socket_fd);
 	remove(fwm.socket_address.sun_path);
+
+	xcb_flush(fwm.conn);
 	xcb_disconnect(fwm.conn);
+
 	exit(status);
 }

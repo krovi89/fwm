@@ -36,7 +36,7 @@ $(WM_OBJDIR)/%.o: %.c
 
 $(WM_OBJDIR)/fwm.o: fwm.c fwm.h events.h messages.h log.h
 $(WM_OBJDIR)/events.o: events.c events.h fwm.h
-$(WM_OBJDIR)/messages.o: messages.c messages.h
+$(WM_OBJDIR)/messages.o: messages.c messages.h fwm.h log.h
 $(WM_OBJDIR)/log.o: log.c log.h fwm.h
 $(WM_OBJ): makefile
 
