@@ -28,6 +28,7 @@ extern struct fwm fwm;
 
 void fwm_initialize(void);
 void fwm_initialize_socket(void);
+void fwm_signal_handler(int signal);
 void fwm_connection_has_error(void);
 void fwm_exit(int status);
 

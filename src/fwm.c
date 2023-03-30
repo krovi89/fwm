@@ -31,6 +31,14 @@ int main(void) {
 	fwm_initialize_socket();
 	fwm_initialize_event_handlers();
 
+	struct sigaction signal_action = {
+		.sa_handler = fwm_signal_handler
+	};
+
+	sigaction(SIGINT, &signal_action, NULL);
+	sigaction(SIGTERM, &signal_action, NULL);
+	sigaction(SIGHUP, &signal_action, NULL);
+
 	poll_fds[0].fd = fwm.conn_fd;
 	poll_fds[1].fd = fwm.socket_fd;
 	poll_fds[0].events = poll_fds[1].events = POLLIN;
@@ -160,6 +168,11 @@ void fwm_initialize_socket(void) {
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1) {
 		fwm_log_error_exit(EXIT_FAILURE, "Listening to the socket failed.\n");
 	}
+}
+
+void fwm_signal_handler(int signal) {
+	fwm_log_info("Signal %i received, exiting..", signal);
+	fwm_exit(EXIT_SUCCESS);
 }
 
 void fwm_connection_has_error(void) {

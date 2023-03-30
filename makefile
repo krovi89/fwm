@@ -1,6 +1,7 @@
 CC := gcc
 
-CFLAGS  += -std=c99 -pedantic -Wall -Wextra
+CFLAGS  += -std=c99 -pedantic -Wall -Wextra \
+           -D _POSIX_C_SOURCE
 LDFLAGS +=
 LDLIBS   = -lxcb
 
