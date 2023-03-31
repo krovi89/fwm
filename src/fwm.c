@@ -32,7 +32,7 @@ int main(void) {
 	fwm_initialize_event_handlers();
 
 	struct sigaction signal_action = {
-		.sa_handler = fwm_signal_handler
+		.sa_handler = fwm_signal_handler_exit
 	};
 
 	sigaction(SIGINT, &signal_action, NULL);
@@ -60,7 +60,7 @@ int main(void) {
 				bool fd_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				/* Has it been longer than 5 seconds since the client established
 				   the connection, without sending a valid message? */
-				bool has_timed_out = client_connection_times[i] && client_connection_times[i] + FWM_CLIENT_TIMEOUT < time(NULL);
+				bool has_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
 
 				/* clean up clients */
 				if (fd_has_error || has_timed_out) {
@@ -181,7 +181,7 @@ void fwm_initialize_socket(void) {
 	}
 }
 
-void fwm_signal_handler(int signal) {
+void fwm_signal_handler_exit(int signal) {
 	fwm_log_info("Signal %i received, exiting..", signal);
 	fwm_exit(EXIT_SUCCESS);
 }
