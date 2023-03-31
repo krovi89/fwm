@@ -48,7 +48,7 @@ int main(void) {
 		clients[i].events = POLLIN;
 	}
 
-	time_t client_times[FWM_MAX_CLIENTS] = {0};
+	time_t client_connection_times[FWM_MAX_CLIENTS] = {0};
 
 	/* very oversized message buffer */
 	unsigned char message[255];
@@ -58,11 +58,16 @@ int main(void) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (int i = 0; i < clients_num; i++) {
 				bool fd_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
-				bool has_timed_out = client_times[i] && client_times[i] + FWM_CLIENT_TIMEOUT < time(NULL);
+				/* Has it been longer than 5 seconds since the client established
+				   the connection, without sending a valid message? */
+				bool has_timed_out = client_connection_times[i] && client_connection_times[i] + FWM_CLIENT_TIMEOUT < time(NULL);
 
+				/* clean up clients */
 				if (fd_has_error || has_timed_out) {
 					close(clients[i].fd);
 
+					/* we don't need to memmove if the client
+					   we're removing is the last one */
 					if (i + 1 != clients_num) {
 						memmove(&clients[i], &clients[i] + 1, sizeof (struct pollfd) * clients_num - (i + 1));
 					}
@@ -72,6 +77,7 @@ int main(void) {
 					continue;
 				}
 
+				/* Read messages from valid clients */
 				if (clients[i].revents & POLLIN) {
 					int length = recv(clients[i].fd, message, sizeof message, 0);
 
@@ -82,11 +88,12 @@ int main(void) {
 
 					fwm_process_message(message, length);
 
-					/* Set the time to 0, so the client never times out */
-					client_times[i] = 0;
+					/* Disable the timeout for this client */
+					client_connection_times[i] = 0;
 				}
 			}
 
+			/* Establishing connections with new clients */
 			if (poll_fds[1].revents & POLLIN) {
 				if (clients_num == FWM_MAX_CLIENTS) {
 					int rejected_fd = accept(fwm.socket_fd, NULL, 0);
@@ -96,7 +103,8 @@ int main(void) {
 				}
 
 				clients[clients_num].fd = accept(fwm.socket_fd, NULL, 0);
-				client_times[clients_num++] = time(NULL);
+				/* Set the time of connection for this client */
+				client_connection_times[clients_num++] = time(NULL);
 			}
 
 			if (poll_fds[0].revents & POLLIN) {
@@ -122,6 +130,7 @@ void fwm_initialize(void) {
 	fwm_connection_has_error();
 	fwm.conn_fd = xcb_get_file_descriptor(fwm.conn);
 
+	/* Get the preferred screen */
 	xcb_screen_iterator_t screen_iterator = xcb_setup_roots_iterator(xcb_get_setup(fwm.conn));
 	for (int i = 0; i < preferred_screen; i++) {
 		xcb_screen_next(&screen_iterator);
