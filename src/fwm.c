@@ -23,8 +23,8 @@
 struct fwm fwm;
 
 static struct pollfd poll_fds[2 + FWM_MAX_CLIENTS];
-static struct pollfd *client_fds = poll_fds + 2;
-static int client_fds_num = 0;
+static struct pollfd *clients = poll_fds + 2;
+static int clients_num = 0;
 
 int main(void) {
 	fwm_initialize();
@@ -44,8 +44,8 @@ int main(void) {
 	poll_fds[0].events = poll_fds[1].events = POLLIN;
 
 	for (int i = 0; i < FWM_MAX_CLIENTS; i++) {
-		client_fds[i].fd = -1;
-		client_fds[i].events = POLLIN;
+		clients[i].fd = -1;
+		clients[i].events = POLLIN;
 	}
 
 	time_t client_times[FWM_MAX_CLIENTS] = {0};
@@ -56,24 +56,24 @@ int main(void) {
 	xcb_generic_event_t *event;
 	for (;;) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
-			for (int i = 0; i < client_fds_num; i++) {
-				bool fd_has_error = client_fds[i].revents & (POLLERR | POLLNVAL | POLLHUP);
+			for (int i = 0; i < clients_num; i++) {
+				bool fd_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				bool has_timed_out = client_times[i] && client_times[i] + FWM_CLIENT_TIMEOUT < time(NULL);
 
 				if (fd_has_error || has_timed_out) {
-					close(client_fds[i].fd);
+					close(clients[i].fd);
 
-					if (i + 1 != client_fds_num) {
-						memmove(&client_fds[i], &client_fds[i] + 1, sizeof (struct pollfd) * client_fds_num - (i + 1));
+					if (i + 1 != clients_num) {
+						memmove(&clients[i], &clients[i] + 1, sizeof (struct pollfd) * clients_num - (i + 1));
 					}
 
-					client_fds[--client_fds_num].fd = -1;
+					clients[--clients_num].fd = -1;
 
 					continue;
 				}
 
-				if (client_fds[i].revents & POLLIN) {
-					int length = recv(client_fds[i].fd, message, sizeof message, 0);
+				if (clients[i].revents & POLLIN) {
+					int length = recv(clients[i].fd, message, sizeof message, 0);
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
@@ -88,15 +88,15 @@ int main(void) {
 			}
 
 			if (poll_fds[1].revents & POLLIN) {
-				if (client_fds_num == FWM_MAX_CLIENTS) {
+				if (clients_num == FWM_MAX_CLIENTS) {
 					int rejected_fd = accept(fwm.socket_fd, NULL, 0);
 					close(rejected_fd);
 
 					continue;
 				}
 
-				client_fds[client_fds_num].fd = accept(fwm.socket_fd, NULL, 0);
-				client_times[client_fds_num++] = time(NULL);
+				clients[clients_num].fd = accept(fwm.socket_fd, NULL, 0);
+				client_times[clients_num++] = time(NULL);
 			}
 
 			if (poll_fds[0].revents & POLLIN) {
@@ -113,10 +113,14 @@ int main(void) {
 }
 
 void fwm_initialize(void) {
+	/* socket_fd has to be initialized here, because fwm_connection_has_error
+	   may call fwm_exit, in which case, file descriptor 0 would be closed. */
+	fwm.socket_fd = -1;
+
 	int preferred_screen;
 	fwm.conn = xcb_connect(NULL, &preferred_screen);
-	fwm.socket_fd = -1;
 	fwm_connection_has_error();
+	fwm.conn_fd = xcb_get_file_descriptor(fwm.conn);
 
 	xcb_screen_iterator_t screen_iterator = xcb_setup_roots_iterator(xcb_get_setup(fwm.conn));
 	for (int i = 0; i < preferred_screen; i++) {
@@ -125,8 +129,6 @@ void fwm_initialize(void) {
 
 	fwm.screen = screen_iterator.data;
 	fwm.root = fwm.screen->root;
-
-	fwm.conn_fd = xcb_get_file_descriptor(fwm.conn);
 
 	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
 	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
@@ -193,8 +195,8 @@ void fwm_connection_has_error(void) {
 }
 
 void fwm_exit(int status) {
-	for (int i = 0; i < client_fds_num; i++) {
-		close(client_fds[i].fd);
+	for (int i = 0; i < clients_num; i++) {
+		close(clients[i].fd);
 	}
 
 	close(fwm.socket_fd);

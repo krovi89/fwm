@@ -8,6 +8,8 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
+#include "events.h"
+
 #define FWM_MAX_CLIENTS 30
 #define FWM_CLIENT_TIMEOUT 5
 
@@ -22,6 +24,8 @@ struct fwm {
 
 	int                 socket_fd;
 	struct sockaddr_un  socket_address;
+
+	struct fwm_event_handlers event_handlers;
 };
 
 extern struct fwm fwm;
