@@ -3,12 +3,15 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
-#include "fwm.h"
 #include "events.h"
+#include "fwm.h"
+#include "actions.h"
+#include "keybinds.h"
 
 void fwm_initialize_event_handlers(void) {
 	fwm.event_handlers.map_request = fwm_event_map_request;
 	fwm.event_handlers.configure_request = fwm_event_configure_request;
+	fwm.event_handlers.key_press = fwm_event_key_press;
 }
 
 void fwm_handle_event(xcb_generic_event_t *event) {
@@ -18,6 +21,10 @@ void fwm_handle_event(xcb_generic_event_t *event) {
 			break;
 		case XCB_CONFIGURE_REQUEST:
 			fwm.event_handlers.configure_request((xcb_configure_request_event_t*) event);
+			break;
+		case XCB_KEY_PRESS:
+			fwm.event_handlers.key_press((xcb_key_press_event_t*) event);
+			break;
 		default:
 			break;
 	}
@@ -31,33 +38,42 @@ void fwm_event_configure_request(xcb_configure_request_event_t *event) {
 	int i = 0;
 	int32_t value_list[7] = { 0 };
 
-	if (event->value_mask & XCB_CONFIG_WINDOW_X) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_X)
 		value_list[i++] = event->x;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_Y) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_Y)
 		value_list[i++] = event->y;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 		value_list[i++] = event->width;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
 		value_list[i++] = event->height;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
 		value_list[i++] = event->border_width;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_SIBLING) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_SIBLING)
 		value_list[i++] = event->sibling;
-	}
-
-	if (event->value_mask & XCB_CONFIG_WINDOW_STACK_MODE) {
+	if (event->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
 		value_list[i++] = event->stack_mode;
-	}
 
 	xcb_configure_window(fwm.conn, event->window, event->value_mask, value_list);
+}
+
+void fwm_event_key_press(xcb_key_press_event_t *event) {
+	struct fwm_keybind *keybind = fwm.current_position;
+	while (keybind) {
+		if (event->state == keybind->keymask && event->detail == keybind->keycode) {
+			if (!keybind->child) {
+				struct fwm_action *action = keybind->actions;
+				for (; action; action = action->next) {
+					action->run(event);
+				}
+
+				fwm_set_keybinds_position(fwm.keybinds);
+			} else {
+				fwm_set_keybinds_position(keybind->child);
+			}
+
+			break;
+		}
+
+		keybind = keybind->next;
+	}
 }

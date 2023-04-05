@@ -5,29 +5,35 @@
 
 #include <sys/un.h>
 
-#include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
 #include "events.h"
+#include "keybinds.h"
 
 #define FWM_MAX_CLIENTS 30
+#define FWM_MAX_MESSAGE_LEN 255
 #define FWM_CLIENT_TIMEOUT 5
 
-#define ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \
-                        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+#define FWM_ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \
+                            XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
 
 /* Holds the window manager's state */
 struct fwm {
-	xcb_connection_t   *conn;
-	int                 conn_fd;
-	xcb_screen_t       *screen;
-	xcb_window_t        root;
+	xcb_connection_t *conn;
+	int               conn_fd;
+	xcb_screen_t     *screen;
+	xcb_window_t      root;
 
-	int                 socket_fd;
-	struct sockaddr_un  socket_address;
+	int                socket_fd;
+	struct sockaddr_un socket_address;
 
-	/* declared in fwm.h */
+	/* declared in events.h */
 	struct fwm_event_handlers event_handlers;
+
+	/* declared in keybinds.h */
+	struct fwm_keybind *keybinds;
+	struct fwm_keybind *current_position;
+	size_t              max_keybind_id;
 };
 
 extern struct fwm fwm;

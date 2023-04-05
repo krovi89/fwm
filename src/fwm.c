@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <unistd.h>
@@ -13,7 +13,6 @@
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
-#include <xcb/randr.h>
 
 #include "fwm.h"
 #include "events.h"
@@ -51,15 +50,15 @@ int main(void) {
 	time_t client_connection_times[FWM_MAX_CLIENTS] = {0};
 
 	/* very oversized message buffer */
-	unsigned char message[255];
+	uint8_t message[FWM_MAX_MESSAGE_LEN];
 
 	xcb_generic_event_t *event;
 	for (;;) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (int i = 0; i < clients_num; i++) {
 				bool fd_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
-				/* Has it been longer than 5 seconds since the client established
-				   the connection, without sending a valid message? */
+				/* Has it been longer than FWM_CLIENT_TIMEOUT seconds since the client
+				   established the connection, without sending a valid message? */
 				bool has_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
 
 				/* clean up clients */
@@ -68,9 +67,8 @@ int main(void) {
 
 					/* we don't need to memmove if the client
 					   we're removing is the last one */
-					if (i + 1 != clients_num) {
+					if (i + 1 != clients_num)
 						memmove(&clients[i], &clients[i] + 1, sizeof (struct pollfd) * clients_num - (i + 1));
-					}
 
 					clients[--clients_num].fd = -1;
 
@@ -86,7 +84,7 @@ int main(void) {
 					if (length < (int) (sizeof message_header + 1)) continue;
 					if (memcmp(message_header, message, sizeof message_header)) continue;
 
-					fwm_process_message(message, length);
+					fwm_process_request(clients[i].fd, message, length);
 
 					/* Disable the timeout for this client */
 					client_connection_times[i] = 0;
@@ -132,9 +130,8 @@ void fwm_initialize(void) {
 
 	/* Get the preferred screen */
 	xcb_screen_iterator_t screen_iterator = xcb_setup_roots_iterator(xcb_get_setup(fwm.conn));
-	for (int i = 0; i < preferred_screen; i++) {
+	for (int i = 0; i < preferred_screen; i++)
 		xcb_screen_next(&screen_iterator);
-	}
 
 	fwm.screen = screen_iterator.data;
 	fwm.root = fwm.screen->root;
@@ -142,10 +139,9 @@ void fwm_initialize(void) {
 	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
 	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
 	                                                                                    XCB_CW_EVENT_MASK,
-	                                                                                    &(uint32_t){ ROOT_EVENT_MASK }));
-	if (error) {
+	                                                                                    &(uint32_t){ FWM_ROOT_EVENT_MASK }));
+	if (error)
 		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
-	}
 }
 
 void fwm_initialize_socket(void) {
@@ -164,21 +160,18 @@ void fwm_initialize_socket(void) {
 
 	free(host_name);
 
-	if (ret > (int) sizeof fwm.socket_address.sun_path - 1) {
+	if (ret > (int) sizeof fwm.socket_address.sun_path - 1)
 		fwm_log_warning("Socket path is too long.\n");
-	} else if (ret < 0) {
+	else if (ret < 0)
 		fwm_log_error_exit(EXIT_FAILURE, "Failed to write socket path.\n");
-	}
 
 	remove(fwm.socket_address.sun_path);
 
-	if (bind(fwm.socket_fd, (struct sockaddr*) &fwm.socket_address, sizeof fwm.socket_address) == -1) {
+	if (bind(fwm.socket_fd, (struct sockaddr*) &fwm.socket_address, sizeof fwm.socket_address) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Socket binding failed.\n");
-	}
 
-	if (listen(fwm.socket_fd, SOMAXCONN) == -1) {
+	if (listen(fwm.socket_fd, SOMAXCONN) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Listening to the socket failed.\n");
-	}
 }
 
 void fwm_signal_handler_exit(int signal) {
@@ -204,9 +197,8 @@ void fwm_connection_has_error(void) {
 }
 
 void fwm_exit(int status) {
-	for (int i = 0; i < clients_num; i++) {
+	for (int i = 0; i < clients_num; i++)
 		close(clients[i].fd);
-	}
 
 	close(fwm.socket_fd);
 	remove(fwm.socket_address.sun_path);
