@@ -19,7 +19,7 @@ bool fwm_add_keybind(struct fwm_keybind *keybind) {
 	struct fwm_keybind *b = keybind;
 	for (;;) {
 		if (a->keycode == b->keycode && a->keymask == b->keymask) {
-			if (!a->child) {
+			if (!a->child || !b->child) {
 				fwm_free_keybind(b, true);
 				return false;
 			}
