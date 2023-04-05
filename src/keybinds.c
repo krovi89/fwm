@@ -54,7 +54,7 @@ void fwm_set_keybinds_position(struct fwm_keybind *position) {
 		fwm_grab_keybinds(position);
 }
 
-void fwm_grab_keybinds(struct fwm_keybind *keybinds) {
+void fwm_grab_keybinds(const struct fwm_keybind *keybinds) {
 	while (keybinds) {
 		xcb_grab_key(fwm.conn, 0, fwm.root, keybinds->keymask, keybinds->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 		keybinds = keybinds->next;

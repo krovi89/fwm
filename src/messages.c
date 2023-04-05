@@ -16,7 +16,7 @@
 
 const uint8_t message_header[3] = { 'f', 'w', 'm' };
 
-void fwm_process_request(int client_fd, uint8_t *message, int length) {
+void fwm_process_request(int client_fd, const uint8_t *message, int length) {
 	message += sizeof message_header;
 	uint8_t request_type = *message++;
 
@@ -52,10 +52,10 @@ void fwm_process_request(int client_fd, uint8_t *message, int length) {
 			message += sizeof (uint16_t);
 			uint8_t keycode = *(message++);
 
-			uint8_t *parents = message;
+			const uint8_t *parents = message;
 			message += (sizeof (uint16_t) + 1) * parents_num;
 
-			uint8_t *actions = message;
+			const uint8_t *actions = message;
 
 			size_t id = 0;
 			bool ret = fwm_handle_request_keybind(parents_num, actions_num,
@@ -96,7 +96,7 @@ void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
 
 bool fwm_handle_request_keybind(uint8_t parents_num, uint8_t actions_num,
                                 uint16_t keymask, uint8_t keycode,
-                                uint8_t *parents, uint8_t *actions,
+                                const uint8_t *parents, const uint8_t *actions,
                                 size_t *id)
 {
 	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));

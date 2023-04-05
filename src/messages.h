@@ -18,11 +18,11 @@
 
 extern const unsigned char message_header[3];
 
-void fwm_process_request(int client_fd, uint8_t *message, int length);
+void fwm_process_request(int client_fd, const uint8_t *message, int length);
 void fwm_compose_send_reply(int client_fd, uint8_t type, void *details);
 bool fwm_handle_request_keybind(uint8_t parents_num, uint8_t actions_num,
                                 uint16_t keymask, uint8_t keycode,
-                                uint8_t *parents, uint8_t *actions,
+                                const uint8_t *parents, const uint8_t *actions,
                                 size_t *id);
 
 #endif
