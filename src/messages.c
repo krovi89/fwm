@@ -16,12 +16,8 @@
 
 const uint8_t message_header[3] = { 'f', 'w', 'm' };
 
-void fwm_process_request(int client_fd, const uint8_t *message, int length) {
-	message += sizeof message_header;
-	uint8_t request_type = *message++;
-
-	int minimum_length = sizeof message_header + 1;
-	switch (request_type) {
+void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int length) {
+	switch (type) {
 		case FWM_REQUEST_NOTHING:
 			break;
 		case FWM_REQUEST_EXIT:
@@ -29,44 +25,7 @@ void fwm_process_request(int client_fd, const uint8_t *message, int length) {
 			fwm_exit(EXIT_SUCCESS);
 			break;
 		case FWM_REQUEST_KEYBIND:
-			/* the size of parents_num + actions_num + keymask + keycode + 1 action
-			   is the minimum for a keybind message */
-			minimum_length += 6;
-			if (length < minimum_length) {
-				fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
-				break;
-			}
-
-			uint8_t parents_num = *message++;
-			uint8_t actions_num = *message++;
-
-			/* the size of a keybind, times parents_num,
-			   plus actions_num */
-			minimum_length += ((sizeof (uint16_t) + 1) * parents_num) + (actions_num - 1);
-			if (length < minimum_length) {
-				fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
-				break;
-			};
-
-			uint16_t keymask = *(uint16_t*)message;
-			message += sizeof (uint16_t);
-			uint8_t keycode = *(message++);
-
-			const uint8_t *parents = message;
-			message += (sizeof (uint16_t) + 1) * parents_num;
-
-			const uint8_t *actions = message;
-
-			size_t id = 0;
-			bool ret = fwm_handle_request_keybind(parents_num, actions_num,
-			                                      keymask, keycode,
-			                                      parents, actions, &id);
-
-			if (ret)
-				fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_ADDED, &id);
-			else
-				fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_EXISTS, NULL);
-
+			fwm_parse_request_keybind(client_fd, message, length);
 			break;
 		default:
 			fwm_compose_send_reply(client_fd, FWM_RESPONSE_UNRECOGNIZED_REQUEST, NULL);
@@ -74,24 +33,47 @@ void fwm_process_request(int client_fd, const uint8_t *message, int length) {
 	}
 }
 
-void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
-	static uint8_t message[FWM_MAX_MESSAGE_LEN] = {0};
-	memcpy(message, message_header, sizeof message_header);
+void fwm_parse_request_keybind(int client_fd, const uint8_t *message, int length) {
+	int minimum_length = 0;
 
-	uint8_t *position = message + sizeof message_header;
-	size_t message_length = sizeof message_header;
-
-	memcpy(position++, &reply_type, 1);
-	message_length++;
-
-	switch (reply_type) {
-		case FWM_RESPONSE_SUCCESS_KEYBIND_ADDED:
-			memcpy(position, (size_t*)details, sizeof (size_t));
-			message_length += sizeof (size_t);
-			break;
+	/* the size of parents_num + actions_num + keymask + keycode + 1 action
+	   is the minimum for a keybind message */
+	minimum_length += 6;
+	if (length < minimum_length) {
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
+		return;
 	}
 
-	send(client_fd, message, message_length, MSG_NOSIGNAL);
+	uint8_t parents_num = *message++;
+	uint8_t actions_num = *message++;
+
+	/* the size of a keybind, times parents_num,
+	   plus actions_num - 1, to compensate for the + 1 we added earlier. */
+	minimum_length += ((sizeof (uint16_t) + 1) * parents_num) + (actions_num - 1);
+	if (length < minimum_length) {
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
+		return;
+	};
+
+	uint16_t keymask = *(uint16_t*)message;
+	message += sizeof (uint16_t);
+	uint8_t keycode = *(message++);
+
+	const uint8_t *parents = message;
+	message += (sizeof (uint16_t) + 1) * parents_num;
+
+	const uint8_t *actions = message;
+
+	size_t id = 0;
+	bool ret = fwm_handle_request_keybind(parents_num, actions_num,
+	                                      keymask, keycode,
+	                                      parents, actions, &id);
+
+	if (ret)
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_ADDED, &id);
+	else
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_EXISTS, NULL);
+
 }
 
 bool fwm_handle_request_keybind(uint8_t parents_num, uint8_t actions_num,
@@ -140,4 +122,24 @@ bool fwm_handle_request_keybind(uint8_t parents_num, uint8_t actions_num,
 
 	*id = keybind->id;
 	return true;
+}
+
+void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
+	static uint8_t message[FWM_MAX_MESSAGE_LEN] = {0};
+	memcpy(message, message_header, sizeof message_header);
+
+	uint8_t *position = message + sizeof message_header;
+	size_t message_length = sizeof message_header;
+
+	memcpy(position++, &reply_type, 1);
+	message_length++;
+
+	switch (reply_type) {
+		case FWM_RESPONSE_SUCCESS_KEYBIND_ADDED:
+			memcpy(position, (size_t*)details, sizeof (size_t));
+			message_length += sizeof (size_t);
+			break;
+	}
+
+	send(client_fd, message, message_length, MSG_NOSIGNAL);
 }

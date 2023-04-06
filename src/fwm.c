@@ -84,7 +84,10 @@ int main(void) {
 					if (length < (int) (sizeof message_header + 1)) continue;
 					if (memcmp(message_header, message, sizeof message_header)) continue;
 
-					fwm_process_request(clients[i].fd, message, length);
+					uint8_t request_type = *(message + sizeof message_header);
+					const uint8_t *request_message = message + (sizeof message_header + 1);
+					int request_length = length - (sizeof message_header + 1);
+					fwm_handle_request(clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */
 					client_connection_times[i] = 0;
