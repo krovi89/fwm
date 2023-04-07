@@ -49,10 +49,10 @@ int main(void) {
 
 	time_t client_connection_times[FWM_MAX_CLIENTS] = {0};
 
-	/* very oversized message buffer */
 	uint8_t message[FWM_MAX_MESSAGE_LEN];
 
 	xcb_generic_event_t *event;
+
 	for (;;) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (int i = 0; i < clients_num; i++) {
@@ -77,16 +77,16 @@ int main(void) {
 
 				/* Read messages from valid clients */
 				if (clients[i].revents & POLLIN) {
-					int length = recv(clients[i].fd, message, sizeof message, 0);
+					int message_length = recv(clients[i].fd, message, sizeof message, 0);
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
-					if (length < (int) (sizeof message_header + 1)) continue;
+					if (message_length < (int) (sizeof message_header + 1)) continue;
 					if (memcmp(message_header, message, sizeof message_header)) continue;
 
 					uint8_t request_type = *(message + sizeof message_header);
 					const uint8_t *request_message = message + (sizeof message_header + 1);
-					int request_length = length - (sizeof message_header + 1);
+					int request_length = message_length - (sizeof message_header + 1);
 					fwm_handle_request(clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */

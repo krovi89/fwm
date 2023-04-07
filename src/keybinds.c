@@ -7,40 +7,39 @@
 #include "keybinds.h"
 #include "fwm.h"
 
-bool fwm_add_keybind(struct fwm_keybind *keybind) {
+bool fwm_add_keybind(struct fwm_keybind *new) {
 	if (!fwm.keybinds) {
-		fwm.keybinds = keybind;
-		fwm.current_position = keybind;
-		xcb_grab_key(fwm.conn, 0, fwm.root, keybind->keymask, keybind->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+		fwm.keybinds = new;
+		fwm.current_position = new;
+		xcb_grab_key(fwm.conn, 0, fwm.root, new->keymask, new->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 		return true;
 	}
 
-	struct fwm_keybind *a = fwm.keybinds;
-	struct fwm_keybind *b = keybind;
+	struct fwm_keybind *current = fwm.keybinds;
 	for (;;) {
-		if (a->keycode == b->keycode && a->keymask == b->keymask) {
-			if (!a->child || !b->child) {
-				fwm_free_keybind(b, true);
+		if (current->keycode == new->keycode && current->keymask == new->keymask) {
+			if (!current->child || !new->child) {
+				fwm_free_keybind(new, true);
 				return false;
 			}
 
-			struct fwm_keybind *temp = b->child;
-			free(b);
-			b = temp;
-			b->parent = a;
+			struct fwm_keybind *temp = new->child;
+			free(new);
+			new = temp;
+			new->parent = current;
 
-			a = a->child;
+			current = current->child;
 		} else {
-			if (!a->next) {
-				b->previous = a;
-				a->next = b;
+			if (!current->next) {
+				new->previous = current;
+				current->next = new;
 
-				if (a == fwm.current_position)
-					xcb_grab_key(fwm.conn, 0, fwm.root, b->keymask, b->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+				if (current == fwm.current_position)
+					xcb_grab_key(fwm.conn, 0, fwm.root, new->keymask, new->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
 
 				break;
 			}
-			a = a->next;
+			current = current->next;
 		}
 	}
 
