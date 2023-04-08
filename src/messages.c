@@ -37,26 +37,16 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 }
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length) {
-	int minimum_length = 0;
-
-	/* the size of parents_num + actions_num + keymask + keycode + 1 action
-	   is the minimum for a keybind message */
-	minimum_length += 4 + sizeof (uint16_t);
-	if (length < minimum_length) {
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
-		return;
-	}
+	if (length < 2) return;
 
 	uint8_t parents_num = *message++;
 	uint8_t actions_num = *message++;
 
-	/* the size of a keybind, times parents_num,
-	   plus actions_num - 1, to compensate for the + 1 we added earlier. */
-	minimum_length += ((sizeof (uint16_t) + 1) * parents_num) + (actions_num - 1);
+	int minimum_length = 2 + ((sizeof (uint16_t) + 1) * (parents_num + 1)) + actions_num;
 	if (length < minimum_length) {
 		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
 		return;
-	};
+	}
 
 	uint16_t keymask = *(uint16_t*)message;
 	message += sizeof (uint16_t);
@@ -86,9 +76,9 @@ void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int
 
 	size_t id = *(size_t*)message;
 	if (fwm_handle_request_remove_keybind(id))
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_REMOVED, NULL);
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_REMOVED, &id);
 	else
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_INVALID_ID, &id);
+		fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_INVALID_ID, NULL);
 }
 
 bool fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
@@ -160,7 +150,7 @@ void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
 
 	switch (reply_type) {
 		case FWM_RESPONSE_SUCCESS_KEYBIND_ADDED:
-		case FWM_RESPONSE_FAILURE_KEYBIND_INVALID_ID:
+		case FWM_RESPONSE_SUCCESS_KEYBIND_REMOVED:
 			memcpy(position, (size_t*)details, sizeof (size_t));
 			message_length += sizeof (size_t);
 			break;
