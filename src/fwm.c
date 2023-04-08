@@ -81,7 +81,7 @@ int main(void) {
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
-					if (message_length < (int) (sizeof message_header + 1)) continue;
+					if (message_length < (int)(sizeof message_header + 1)) continue;
 					if (memcmp(message_header, message, sizeof message_header)) continue;
 
 					uint8_t request_type = *(message + sizeof message_header);
@@ -170,7 +170,7 @@ void fwm_initialize_socket(void) {
 
 	remove(fwm.socket_address.sun_path);
 
-	if (bind(fwm.socket_fd, (struct sockaddr*) &fwm.socket_address, sizeof fwm.socket_address) == -1)
+	if (bind(fwm.socket_fd, (struct sockaddr*)&fwm.socket_address, sizeof fwm.socket_address) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Socket binding failed.\n");
 
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1)
