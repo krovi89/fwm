@@ -31,20 +31,23 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 			fwm_parse_request_remove_keybind(client_fd, message, length);
 			break;
 		default:
-			fwm_compose_send_reply(client_fd, FWM_RESPONSE_UNRECOGNIZED_REQUEST, NULL);
+			fwm_compose_send_reply(client_fd, FWM_UNRECOGNIZED_REQUEST, NULL);
 			break;
 	}
 }
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < 2) return;
+	if (length < 2)  {
+		fwm_compose_send_reply(client_fd, FWM_INVALID_REQUEST, NULL);
+		return;
+	}
 
 	uint8_t parents_num = *message++;
 	uint8_t actions_num = *message++;
 
 	int minimum_length = 2 + ((sizeof (uint16_t) + 1) * (parents_num + 1)) + actions_num;
 	if (length < minimum_length) {
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
+		fwm_compose_send_reply(client_fd, FWM_INVALID_REQUEST, NULL);
 		return;
 	}
 
@@ -58,33 +61,17 @@ void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int le
 	const uint8_t *actions = message;
 
 	size_t id = 0;
-	bool ret = fwm_handle_request_add_keybind(parents_num, actions_num,
-	                                          keymask, keycode,
-	                                          parents, actions, &id);
+	uint8_t response = fwm_handle_request_add_keybind(parents_num, actions_num,
+	                                                  keymask, keycode,
+	                                                  parents, actions, &id);
 
-	if (ret)
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_ADDED, &id);
-	else
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_EXISTS, NULL);
+	fwm_compose_send_reply(client_fd, response, &id);
 }
 
-void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < (int)sizeof (size_t)) {
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_INVALID_REQUEST, NULL);
-		return;
-	}
-
-	size_t id = *(size_t*)message;
-	if (fwm_handle_request_remove_keybind(id))
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_SUCCESS_KEYBIND_REMOVED, &id);
-	else
-		fwm_compose_send_reply(client_fd, FWM_RESPONSE_FAILURE_KEYBIND_INVALID_ID, NULL);
-}
-
-bool fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
-                                    uint16_t keymask, uint8_t keycode,
-                                    const uint8_t *parents, const uint8_t *actions,
-                                    size_t *id)
+uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
+                                       uint16_t keymask, uint8_t keycode,
+                                       const uint8_t *parents, const uint8_t *actions,
+                                       size_t *id)
 {
 	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));
 	struct fwm_keybind *keybind_root = keybind;
@@ -123,19 +110,33 @@ bool fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 		}
 	}
 
-	if (!fwm_add_keybind(keybind_root)) return false;
+
+	if (!fwm_add_keybind(keybind_root))
+		return FWM_KEYBIND_ALREADY_EXISTS;
 
 	*id = keybind->id;
-	return true;
+	return FWM_KEYBIND_ADDED;
 }
 
-bool fwm_handle_request_remove_keybind(size_t id) {
+void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
+	if (length < (int)sizeof (size_t)) {
+		fwm_compose_send_reply(client_fd, FWM_INVALID_REQUEST, NULL);
+		return;
+	}
+
+	size_t id = *(size_t*)message;
+	uint8_t response = fwm_handle_request_remove_keybind(id);
+
+	fwm_compose_send_reply(client_fd, response, NULL);
+}
+
+uint8_t fwm_handle_request_remove_keybind(size_t id) {
 	struct fwm_keybind *keybind = fwm_find_keybind(id, fwm.keybinds);
 	if (!keybind)
-		return false;
+		return FWM_KEYBIND_INVALID_ID;
 
 	fwm_remove_keybind(keybind);
-	return true;
+	return FWM_KEYBIND_REMOVED;
 }
 
 void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
@@ -149,8 +150,7 @@ void fwm_compose_send_reply(int client_fd, uint8_t reply_type, void *details) {
 	message_length++;
 
 	switch (reply_type) {
-		case FWM_RESPONSE_SUCCESS_KEYBIND_ADDED:
-		case FWM_RESPONSE_SUCCESS_KEYBIND_REMOVED:
+		case FWM_KEYBIND_ADDED:
 			memcpy(position, (size_t*)details, sizeof (size_t));
 			message_length += sizeof (size_t);
 			break;

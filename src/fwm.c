@@ -16,6 +16,7 @@
 
 #include "fwm.h"
 #include "events.h"
+#include "keybinds.h"
 #include "messages.h"
 #include "log.h"
 
@@ -84,9 +85,9 @@ int main(void) {
 					if (message_length < (int)(sizeof message_header + 1)) continue;
 					if (memcmp(message_header, message, sizeof message_header)) continue;
 
+					int request_length = message_length - (sizeof message_header + 1);
 					uint8_t request_type = *(message + sizeof message_header);
 					const uint8_t *request_message = message + (sizeof message_header + 1);
-					int request_length = message_length - (sizeof message_header + 1);
 					fwm_handle_request(clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */
@@ -145,6 +146,8 @@ void fwm_initialize(void) {
 	                                                                                    &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error)
 		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
+
+	fwm.max_keybind_id = 1;
 }
 
 void fwm_initialize_socket(void) {
@@ -200,6 +203,9 @@ void fwm_connection_has_error(void) {
 }
 
 void fwm_exit(int status) {
+	if (fwm.keybinds)
+		fwm_remove_all_keybinds();
+
 	for (int i = 0; i < clients_num; i++)
 		close(clients[i].fd);
 
