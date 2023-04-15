@@ -141,9 +141,9 @@ void fwm_initialize(void) {
 	fwm.root = fwm.screen->root;
 
 	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
-	                                               xcb_change_window_attributes_checked(fwm.conn, fwm.root,
-	                                                                                    XCB_CW_EVENT_MASK,
-	                                                                                    &(uint32_t){ FWM_ROOT_EVENT_MASK }));
+                                                       xcb_change_window_attributes_checked(fwm.conn, fwm.root,
+											    XCB_CW_EVENT_MASK,
+                                                                                            &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error)
 		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
 
@@ -151,9 +151,8 @@ void fwm_initialize(void) {
 }
 
 void fwm_initialize_socket(void) {
-	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Socket creation failed.\n");
-	}
 
 	char *host_name;
 	int display_number, screen_number;
@@ -162,7 +161,7 @@ void fwm_initialize_socket(void) {
 
 	fwm.socket_address.sun_family = AF_UNIX;
 	int ret = snprintf(fwm.socket_address.sun_path, sizeof fwm.socket_address.sun_path,
-	               "/tmp/fwm_%s_%i-%i", host_name, display_number, screen_number);
+	                   "/tmp/fwm_%s_%i-%i", host_name, display_number, screen_number);
 
 	free(host_name);
 
@@ -189,13 +188,13 @@ void fwm_connection_has_error(void) {
 	int error_code = xcb_connection_has_error(fwm.conn);
 	if (error_code) {
 		char *error_strings[XCB_CONN_CLOSED_FDPASSING_FAILED + 1] = {
-		                   [XCB_CONN_ERROR]                   = "XCB_CONN_ERROR",
-		                   [XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "XCB_CONN_CLOSED_EXT_NOTSUPPORTED",
-		                   [XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "XCB_CONN_CLOSED_MEM_INSUFFICIENT",
-		                   [XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "XCB_CONN_CLOSED_REQ_LEN_EXCEED",
-		                   [XCB_CONN_CLOSED_PARSE_ERR]        = "XCB_CONN_CLOSED_PARSE_ERR",
-		                   [XCB_CONN_CLOSED_INVALID_SCREEN]   = "XCB_CONN_CLOSED_INVALID_SCREEN",
-		                   [XCB_CONN_CLOSED_FDPASSING_FAILED] = "XCB_CONN_CLOSED_FDPASSING_FAILED",
+			[XCB_CONN_ERROR]                   = "XCB_CONN_ERROR",
+			[XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "XCB_CONN_CLOSED_EXT_NOTSUPPORTED",
+			[XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "XCB_CONN_CLOSED_MEM_INSUFFICIENT",
+			[XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "XCB_CONN_CLOSED_REQ_LEN_EXCEED",
+			[XCB_CONN_CLOSED_PARSE_ERR]        = "XCB_CONN_CLOSED_PARSE_ERR",
+			[XCB_CONN_CLOSED_INVALID_SCREEN]   = "XCB_CONN_CLOSED_INVALID_SCREEN",
+			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "XCB_CONN_CLOSED_FDPASSING_FAILED",
 		};
 
 		fwm_log_error_exit(error_code, "Could not connect to the X server: %s (%u).\n", error_strings[error_code], error_code);

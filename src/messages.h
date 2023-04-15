@@ -24,13 +24,13 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length);
 uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
-                                    uint16_t keymask, uint8_t keycode,
-                                    const uint8_t *parents, const uint8_t *actions,
-                                    size_t *id);
+                                       uint16_t keymask, uint8_t keycode,
+                                       const uint8_t *parents, const uint8_t *actions,
+                                       size_t *id);
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length);
 uint8_t fwm_handle_request_remove_keybind(size_t id);
 
-void fwm_compose_send_reply(int client_fd, uint8_t type, void *details);
+void fwm_compose_send_response(int client_fd, uint8_t type, void *details);
 
 #endif
