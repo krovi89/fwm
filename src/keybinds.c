@@ -77,10 +77,10 @@ struct fwm_keybind *fwm_find_keybind_by_id(size_t id, struct fwm_keybind *curren
 struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct fwm_keybind *current) {
 	for (;;) {
 		if (keybind->keymask == current->keymask && keybind->keycode == current->keycode) {
-			if ((current->child || !current->child) && !keybind->child) {
+			if (!keybind->child) {
 				return current;
 			}
-			if (!current->child && keybind->child) {
+			if (keybind->child && !current->child) {
 				return NULL;
 			}
 
