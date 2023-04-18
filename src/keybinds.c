@@ -6,7 +6,7 @@
 #include "keybinds.h"
 #include "fwm.h"
 
-bool fwm_add_keybind(struct fwm_keybind *new) {
+bool fwm_assimilate_keybind(struct fwm_keybind *new) {
 	if (!fwm.keybinds) {
 		fwm.keybinds = new;
 		fwm.current_position = new;
@@ -59,19 +59,40 @@ void fwm_grab_keybinds(const struct fwm_keybind *keybinds) {
 	}
 }
 
-struct fwm_keybind *fwm_find_keybind(size_t id, struct fwm_keybind *current) {
+struct fwm_keybind *fwm_find_keybind_by_id(size_t id, struct fwm_keybind *current) {
 	if (current->id == id)
 		return current;
 
 	struct fwm_keybind *found = NULL;
 	if (current->child)
-		if ((found = fwm_find_keybind(id, current->child)))
+		if ((found = fwm_find_keybind_by_id(id, current->child)))
 			return found;
 	if (current->next)
-		if ((found = fwm_find_keybind(id, current->next)))
+		if ((found = fwm_find_keybind_by_id(id, current->next)))
 			return found;
 
 	return NULL;
+}
+
+struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct fwm_keybind *current) {
+	for (;;) {
+		if (keybind->keymask == current->keymask && keybind->keycode == current->keycode) {
+			if ((current->child || !current->child) && !keybind->child) {
+				return current;
+			}
+			if (!current->child && keybind->child) {
+				return NULL;
+			}
+
+			keybind = keybind->child;
+			current = current->child;
+		} else {
+			if (!current->next)
+				return NULL;
+
+			current = current->next;
+		}
+	}
 }
 
 void fwm_free_keybind(struct fwm_keybind *keybind, bool keep_siblings) {

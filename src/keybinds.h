@@ -19,10 +19,11 @@ struct fwm_keybind {
 	struct fwm_action *actions;
 };
 
-bool fwm_add_keybind(struct fwm_keybind *keybind);
+bool fwm_assimilate_keybind(struct fwm_keybind *keybind);
 void fwm_set_keybinds_position(struct fwm_keybind *keybind);
 void fwm_grab_keybinds(const struct fwm_keybind *keybind);
-struct fwm_keybind *fwm_find_keybind(size_t id, struct fwm_keybind *current);
+struct fwm_keybind *fwm_find_keybind_by_id(size_t id, struct fwm_keybind *current);
+struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct fwm_keybind *current);
 void fwm_free_keybind(struct fwm_keybind *keybind, bool keep_siblings);
 void fwm_remove_keybind(struct fwm_keybind *keybind);
 void fwm_remove_all_keybinds(void);

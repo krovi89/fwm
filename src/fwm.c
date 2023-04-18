@@ -142,12 +142,10 @@ void fwm_initialize(void) {
 
 	xcb_generic_error_t *error = xcb_request_check(fwm.conn,
                                                        xcb_change_window_attributes_checked(fwm.conn, fwm.root,
-											    XCB_CW_EVENT_MASK,
+                                                                                            XCB_CW_EVENT_MASK,
                                                                                             &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error)
 		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
-
-	fwm.max_keybind_id = 1;
 }
 
 void fwm_initialize_socket(void) {
@@ -180,7 +178,7 @@ void fwm_initialize_socket(void) {
 }
 
 void fwm_signal_handler_exit(int signal) {
-	fwm_log_info("Signal %i received, exiting..", signal);
+	fwm_log_info("Signal %i received, exiting..\n", signal);
 	fwm_exit(EXIT_SUCCESS);
 }
 
