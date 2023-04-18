@@ -6,6 +6,7 @@
 #define FWM_ACTION_CLOSE_FOCUSED 1
 
 struct fwm_action {
+	uint8_t type;
 	void (*run)(xcb_key_press_event_t*);
 	struct fwm_action *next;
 };

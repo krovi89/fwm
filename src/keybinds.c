@@ -77,12 +77,10 @@ struct fwm_keybind *fwm_find_keybind_by_id(size_t id, struct fwm_keybind *curren
 struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct fwm_keybind *current) {
 	for (;;) {
 		if (keybind->keymask == current->keymask && keybind->keycode == current->keycode) {
-			if (!keybind->child) {
+			if (!keybind->child)
 				return current;
-			}
-			if (keybind->child && !current->child) {
+			if (keybind->child && !current->child)
 				return NULL;
-			}
 
 			keybind = keybind->child;
 			current = current->child;
@@ -93,6 +91,14 @@ struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct
 			current = current->next;
 		}
 	}
+}
+
+struct fwm_keybind *fwm_create_keybind(uint16_t keymask, uint8_t keycode, size_t id) {
+	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));
+	keybind->keymask = keymask;
+	keybind->keycode = keycode;
+	keybind->id = id;
+	return keybind;
 }
 
 void fwm_free_keybind(struct fwm_keybind *keybind, bool keep_siblings) {

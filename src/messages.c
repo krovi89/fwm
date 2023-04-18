@@ -51,65 +51,27 @@ void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int le
 		return;
 	}
 
-	uint16_t keymask = *(uint16_t*)message;
-	message += sizeof (uint16_t);
-	uint8_t keycode = *message++;
-
 	const uint8_t *parents = message;
-	message += (sizeof (uint16_t) + 1) * parents_num;
-
+	message += (sizeof (uint16_t) + 1) * (parents_num + 1);
 	const uint8_t *actions = message;
 
 	size_t id = 0;
 	uint8_t response = fwm_handle_request_add_keybind(parents_num, actions_num,
-	                                                  keymask, keycode,
 	                                                  parents, actions, &id);
 
 	fwm_compose_send_response(client_fd, response, &id);
 }
 
 uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
-                                       uint16_t keymask, uint8_t keycode,
                                        const uint8_t *parents, const uint8_t *actions,
                                        size_t *id) {
-	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));
-	struct fwm_keybind *keybind_root = keybind;
-	for (int i = 0; i < parents_num; i++) {
-		keybind->id = ++fwm.max_keybind_id;
+	struct fwm_keybind *keybind = NULL;
+	struct fwm_keybind *tree = fwm_parse_keybind(parents_num, parents,
+	                                             &keybind, true);
 
-		keybind->keymask = *(uint16_t*)parents;
-		parents += sizeof (uint16_t);
-		keybind->keycode = *parents++;
+	keybind->actions = fwm_parse_action(actions_num, actions);
 
-		keybind->child = calloc(1, sizeof (struct fwm_keybind));
-		keybind->child->parent = keybind;
-		keybind = keybind->child;
-	}
-
-	keybind->id = ++fwm.max_keybind_id;
-
-	keybind->keymask = keymask;
-	keybind->keycode = keycode;
-
-	struct fwm_action *action = calloc(1, sizeof (struct fwm_action));
-	keybind->actions = action;
-	for (int i = 0; i < actions_num; i++) {
-		uint8_t action_type = *actions++;
-		switch (action_type) {
-			case FWM_ACTION_CLOSE_FOCUSED:
-				action->run = fwm_action_close_focused;
-				break;
-			default:
-				break;
-		}
-
-		if (i + 1 != actions_num) {
-			action->next = calloc(1, sizeof (struct fwm_action));
-			action = action->next;
-		}
-	}
-
-	if (!fwm_assimilate_keybind(keybind_root))
+	if (!fwm_assimilate_keybind(tree))
 		return FWM_KEYBIND_ALREADY_EXISTS;
 
 	*id = keybind->id;
@@ -117,12 +79,12 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < (int)sizeof (size_t)) {
+	if (length < (int)(sizeof (size_t))) {
 		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
 		return;
 	}
 
-	size_t id = *(size_t*)message;
+	size_t id = *(size_t*)(message);
 	uint8_t response = fwm_handle_request_remove_keybind(id);
 
 	fwm_compose_send_response(client_fd, response, NULL);
@@ -151,48 +113,28 @@ void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int
 		return;
 	}
 
-	uint16_t keymask = *(uint16_t*)message;
-	message += sizeof (uint16_t);
-	uint8_t keycode = *message++;
-
 	const uint8_t *parents = message;
 
 	size_t id = 0;
-	uint8_t response = fwm_handle_request_get_keybind_id(parents_num,
-	                                                     keymask, keycode,
-	                                                     parents,
+	uint8_t response = fwm_handle_request_get_keybind_id(parents_num, parents,
 	                                                     &id);
 
 	fwm_compose_send_response(client_fd, response, &id);
 }
 
-uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num,
-                                          uint16_t keymask, uint8_t keycode,
-                                          const uint8_t *parents,
+uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *parents,
                                           size_t *id) {
-	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));
-	struct fwm_keybind *keybind_root = keybind;
-	for (int i = 0; i < parents_num; i++) {
-		keybind->keymask = *(uint16_t*)parents;
-		parents += sizeof (uint16_t);
-		keybind->keycode = *parents++;
+	struct fwm_keybind *tree = fwm_parse_keybind(parents_num, parents,
+	                                             NULL, false);
 
-		keybind->child = calloc(1, sizeof (struct fwm_keybind));
-		keybind->child->parent = keybind;
-		keybind = keybind->child;
-	}
-
-	keybind->keycode = keycode;
-	keybind->keymask = keymask;
-
-	struct fwm_keybind *found = fwm_find_keybind_by_keys(keybind_root, fwm.keybinds);
+	struct fwm_keybind *found = fwm_find_keybind_by_keys(tree, fwm.keybinds);
 	uint8_t ret = FWM_KEYBIND_NOT_FOUND;
 	if (found) {
 		ret = FWM_KEYBIND_FOUND;
 		*id = found->id;
 	}
 
-	fwm_free_keybind(keybind_root, true);
+	fwm_free_keybind(tree, true);
 	return ret;
 }
 
@@ -209,10 +151,58 @@ void fwm_compose_send_response(int client_fd, uint8_t response_type, void *detai
 	switch (response_type) {
 		case FWM_KEYBIND_ADDED:
 		case FWM_KEYBIND_FOUND:
-			memcpy(position, (size_t*)details, sizeof (size_t));
+			memcpy(position, (size_t*)(details), sizeof (size_t));
 			message_length += sizeof (size_t);
 			break;
 	}
 
 	send(client_fd, message, message_length, MSG_NOSIGNAL);
+}
+
+struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parents,
+                                      struct fwm_keybind **keybind, bool assign_id) {
+	struct fwm_keybind *base = NULL, *tree = NULL;
+	for (uint8_t i = 0; i < parents_num + 1; i++) {
+		uint16_t keymask = *(uint16_t*)(parents);
+		parents += sizeof (uint16_t);
+		uint16_t keycode = *parents++;
+
+		if (!tree) {
+			tree = fwm_create_keybind(keymask, keycode, assign_id ? ++fwm.max_keybind_id : 0);
+			base = tree;
+			continue;
+		}
+
+	 	tree->child = fwm_create_keybind(keymask, keycode, assign_id ? ++fwm.max_keybind_id : 0);
+	 	tree->child->parent = tree;
+	 	tree = tree->child;
+	}
+
+	if (keybind) *keybind = tree;
+	return base;
+}
+
+struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions) {
+	struct fwm_action *action = NULL;
+	for (int i = 0; i < actions_num; i++) {
+		uint8_t action_type = *actions++;
+
+		if (!action) {
+			action = calloc(1, sizeof (struct fwm_action));
+		} else {
+			action->next = calloc(1, sizeof (struct fwm_action));
+			action = action->next;
+		}
+
+		action->type = action_type;
+		switch (action_type) {
+		 	case FWM_ACTION_CLOSE_FOCUSED:
+		 		action->run = fwm_action_close_focused;
+		 		break;
+		 	default:
+		 		break;
+		}
+	}
+
+	return action;
 }

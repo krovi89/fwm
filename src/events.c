@@ -17,13 +17,13 @@ void fwm_initialize_event_handlers(void) {
 void fwm_handle_event(xcb_generic_event_t *event) {
 	switch (event->response_type) {
 		case XCB_MAP_REQUEST:
-			fwm.event_handlers.map_request((xcb_map_request_event_t*)event);
+			fwm.event_handlers.map_request((xcb_map_request_event_t*)(event));
 			break;
 		case XCB_CONFIGURE_REQUEST:
-			fwm.event_handlers.configure_request((xcb_configure_request_event_t*)event);
+			fwm.event_handlers.configure_request((xcb_configure_request_event_t*)(event));
 			break;
 		case XCB_KEY_PRESS:
-			fwm.event_handlers.key_press((xcb_key_press_event_t*)event);
+			fwm.event_handlers.key_press((xcb_key_press_event_t*)(event));
 			break;
 		default:
 			break;
