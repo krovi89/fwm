@@ -15,27 +15,27 @@ const uint8_t message_header[3] = { 'f', 'w', 'm' };
 
 void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int length) {
 	switch (type) {
-		case FWM_REQUEST_NOTHING:
+		case FWM_NO_REQUEST:
 			break;
 		case FWM_REQUEST_EXIT:
 			fwm_log_info("Received FWM_REQUEST_EXIT, exiting..\n");
 			fwm_exit(EXIT_SUCCESS);
 			break;
-		case FWM_REQUEST_ADD_KEYBIND:
+		case FWM_REQUEST_KEYBIND_ADD:
 			fwm_parse_request_add_keybind(client_fd, message, length);
 			break;
-		case FWM_REQUEST_REMOVE_KEYBIND:
+		case FWM_REQUEST_KEYBIND_REMOVE:
 			fwm_parse_request_remove_keybind(client_fd, message, length);
 			break;
-		case FWM_REQUEST_REMOVE_ALL_KEYBINDS:
-			fwm_remove_all_keybinds();
-			fwm_compose_send_response(client_fd, FWM_KEYBIND_REMOVED_ALL, NULL);
+		case FWM_REQUEST_KEYBIND_REMOVE_ALL:
+			if (fwm.keybinds) fwm_remove_all_keybinds();
+			fwm_compose_send_response(client_fd, FWM_SUCCESS_KEYBIND_REMOVED_ALL, NULL);
 			break;
-		case FWM_REQUEST_GET_KEYBIND_ID:
+		case FWM_REQUEST_KEYBIND_GET_ID:
 			fwm_parse_request_get_keybind_id(client_fd, message, length);
 			break;
 		default:
-			fwm_compose_send_response(client_fd, FWM_UNRECOGNIZED_REQUEST, NULL);
+			fwm_compose_send_response(client_fd, FWM_FAILURE_UNRECOGNIZED_REQUEST, NULL);
 			break;
 	}
 }
@@ -65,10 +65,10 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 	keybind->actions = fwm_parse_action(actions_num, actions);
 
 	if (!fwm_assimilate_keybind(tree))
-		return FWM_KEYBIND_ALREADY_EXISTS;
+		return FWM_FAILURE_KEYBIND_ALREADY_EXISTS;
 
 	*id = keybind->id;
-	return FWM_KEYBIND_ADDED;
+	return FWM_SUCCESS_KEYBIND_ADDED;
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
@@ -81,10 +81,10 @@ void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int
 uint8_t fwm_handle_request_remove_keybind(size_t id) {
 	struct fwm_keybind *keybind = fwm_find_keybind_by_id(id, fwm.keybinds);
 	if (!keybind)
-		return FWM_KEYBIND_INVALID_ID;
+		return FWM_FAILURE_KEYBIND_INVALID_ID;
 
 	fwm_remove_keybind(keybind);
-	return FWM_KEYBIND_REMOVED;
+	return FWM_SUCCESS_KEYBIND_REMOVED;
 }
 
 void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int length) {
@@ -105,9 +105,9 @@ uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *pa
 	                                             NULL, false);
 
 	struct fwm_keybind *found = fwm_find_keybind_by_keys(tree, fwm.keybinds);
-	uint8_t ret = FWM_KEYBIND_NOT_FOUND;
+	uint8_t ret = FWM_FAILURE_KEYBIND_NOT_FOUND;
 	if (found) {
-		ret = FWM_KEYBIND_FOUND;
+		ret = FWM_SUCCESS_KEYBIND_FOUND;
 		*id = found->id;
 	}
 
@@ -126,8 +126,8 @@ void fwm_compose_send_response(int client_fd, uint8_t response_type, void *detai
 	message_length++;
 
 	switch (response_type) {
-		case FWM_KEYBIND_ADDED:
-		case FWM_KEYBIND_FOUND:
+		case FWM_SUCCESS_KEYBIND_ADDED:
+		case FWM_SUCCESS_KEYBIND_FOUND:
 			memcpy(position, (size_t*)(details), sizeof (size_t));
 			message_length += sizeof (size_t);
 			break;
