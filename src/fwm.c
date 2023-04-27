@@ -52,18 +52,16 @@ int main(void) {
 
 	uint8_t message[FWM_MAX_MESSAGE_LEN];
 
-	xcb_generic_event_t *event;
-
 	for (;;) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (int i = 0; i < clients_num; i++) {
-				bool fd_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
+				bool client_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				/* Has it been longer than FWM_CLIENT_TIMEOUT seconds since the client
 				   established the connection, without sending a valid message? */
-				bool has_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
+				bool client_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
 
 				/* clean up clients */
-				if (fd_has_error || has_timed_out) {
+				if (client_has_error || client_timed_out) {
 					close(clients[i].fd);
 
 					/* we don't need to memmove if the client
@@ -110,6 +108,7 @@ int main(void) {
 			}
 
 			if (poll_fds[0].revents & POLLIN) {
+				xcb_generic_event_t *event;
 				while ((event = xcb_poll_for_event(fwm.conn))) {
 					fwm_handle_event(event);
 					free(event);

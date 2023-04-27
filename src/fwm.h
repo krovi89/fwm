@@ -10,8 +10,8 @@
 #include "events.h"
 #include "keybinds.h"
 
-#define FWM_MAX_CLIENTS 30
 #define FWM_MAX_MESSAGE_LEN 255
+#define FWM_MAX_CLIENTS 30
 #define FWM_CLIENT_TIMEOUT 5
 
 #define FWM_ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \

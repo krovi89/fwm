@@ -27,6 +27,10 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 		case FWM_REQUEST_REMOVE_KEYBIND:
 			fwm_parse_request_remove_keybind(client_fd, message, length);
 			break;
+		case FWM_REQUEST_REMOVE_ALL_KEYBINDS:
+			fwm_remove_all_keybinds();
+			fwm_compose_send_response(client_fd, FWM_KEYBIND_REMOVED_ALL, NULL);
+			break;
 		case FWM_REQUEST_GET_KEYBIND_ID:
 			fwm_parse_request_get_keybind_id(client_fd, message, length);
 			break;
@@ -37,19 +41,8 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 }
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < 2)  {
-		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
-		return;
-	}
-
 	uint8_t parents_num = *message++;
 	uint8_t actions_num = *message++;
-
-	int minimum_length = 2 + ((sizeof (uint16_t) + 1) * (parents_num + 1)) + actions_num;
-	if (length < minimum_length) {
-		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
-		return;
-	}
 
 	const uint8_t *parents = message;
 	message += (sizeof (uint16_t) + 1) * (parents_num + 1);
@@ -79,11 +72,6 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < (int)(sizeof (size_t))) {
-		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
-		return;
-	}
-
 	size_t id = *(size_t*)(message);
 	uint8_t response = fwm_handle_request_remove_keybind(id);
 
@@ -100,18 +88,7 @@ uint8_t fwm_handle_request_remove_keybind(size_t id) {
 }
 
 void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int length) {
-	if (length < 1) {
-		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
-		return;
-	}
-
 	uint8_t parents_num = *message++;
-
-	int minimum_length = 1 + (sizeof (uint16_t) + 1) * (parents_num + 1);
-	if (length < minimum_length) {
-		fwm_compose_send_response(client_fd, FWM_INVALID_REQUEST, NULL);
-		return;
-	}
 
 	const uint8_t *parents = message;
 
