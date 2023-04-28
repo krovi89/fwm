@@ -55,9 +55,9 @@ void fwm_event_key_press(xcb_key_press_event_t *event) {
 	while (keybind) {
 		if (event->state == keybind->keymask && event->detail == keybind->keycode) {
 			if (!keybind->child) {
-				struct fwm_action *action = keybind->actions;
-				for (; action; action = action->next) {
-					action->run(event);
+				struct fwm_action *action;
+				for (action = keybind->actions; action; action = action->next) {
+					action->run(action->args, event->child);
 				}
 
 				fwm_set_keybinds_position(fwm.keybinds);

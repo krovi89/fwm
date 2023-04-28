@@ -11,6 +11,8 @@
 #include "keybinds.h"
 #include "log.h"
 
+// TODO: message validation
+
 const uint8_t message_header[3] = { 'f', 'w', 'm' };
 
 void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int length) {
@@ -74,8 +76,8 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
 	size_t id = *(size_t*)(message);
-	uint8_t response = fwm_handle_request_remove_keybind(id);
 
+	uint8_t response = fwm_handle_request_remove_keybind(id);
 	fwm_compose_send_response(client_fd, response, NULL);
 }
 
@@ -179,11 +181,29 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 			action = action->next;
 		}
 
-		action->type = action_type;
 		switch (action_type) {
 		 	case FWM_ACTION_CLOSE_FOCUSED:
 		 		action->run = fwm_action_close_focused;
+				action->args = NULL;
 		 		break;
+			case FWM_ACTION_EXECUTE: {
+				size_t command_length = *(size_t*)(actions);
+				actions += sizeof (size_t);
+
+				struct fwm_action_execute_args *args = calloc(1, sizeof (struct fwm_action_execute_args));
+
+				if (actions[command_length - 1] != '\0') {
+					args->command = malloc(command_length + 1);
+					args->command[command_length] = '\0';
+				} else {
+					args->command = malloc(command_length);
+				}
+
+				memcpy(args->command, actions, command_length);
+				action->run = fwm_action_execute;
+				action->args = args;
+			}
+
 		 	default:
 		 		break;
 		}

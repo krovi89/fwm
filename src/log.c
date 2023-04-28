@@ -5,6 +5,8 @@
 #include "fwm.h"
 #include "log.h"
 
+// TODO: output log messages to a file
+
 static int fwm_log(FILE *stream, const char *type, const char *type_escape, const char *message_escape, const char *format, va_list argument_list) {
 	fprintf(stream, "%s%s:%s ", type_escape, type, message_escape);
 	int ret = vfprintf(stream, format, argument_list);

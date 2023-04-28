@@ -144,6 +144,9 @@ void fwm_initialize(void) {
                                                                                             &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error)
 		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
+
+	if (!(fwm.exec_shell = getenv(FWM_EXEC_SHELL_ENV)) && !(fwm.exec_shell = getenv("SHELL")))
+		fwm.exec_shell = FWM_EXEC_SHELL;
 }
 
 void fwm_initialize_socket(void) {

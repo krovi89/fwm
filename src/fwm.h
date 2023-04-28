@@ -18,6 +18,9 @@
 #define FWM_ROOT_EVENT_MASK XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | \
                             XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
 
+#define FWM_EXEC_SHELL_ENV "FWM_SHELL"
+#define FWM_EXEC_SHELL "/bin/sh"
+
 /* Holds the window manager's state */
 struct fwm {
 	xcb_connection_t *conn;
@@ -32,6 +35,8 @@ struct fwm {
 	struct fwm_keybind *keybinds;
 	struct fwm_keybind *current_position;
 	size_t              max_keybind_id;
+
+	char *exec_shell;
 };
 
 extern struct fwm fwm;

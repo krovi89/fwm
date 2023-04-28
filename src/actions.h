@@ -4,13 +4,19 @@
 #include <xcb/xproto.h>
 
 #define FWM_ACTION_CLOSE_FOCUSED 1
+#define FWM_ACTION_EXECUTE 2
 
 struct fwm_action {
-	uint8_t type;
-	void (*run)(xcb_key_press_event_t*);
+	void (*run)(void*, xcb_window_t);
+	void *args;
 	struct fwm_action *next;
 };
 
-void fwm_action_close_focused(xcb_key_press_event_t *event);
+struct fwm_action_execute_args {
+	char *command;
+};
+
+void fwm_action_close_focused(void *args, xcb_window_t window);
+void fwm_action_execute(void *args, xcb_window_t window);
 
 #endif
