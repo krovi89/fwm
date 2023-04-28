@@ -61,6 +61,7 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 	struct fwm_keybind *keybind = NULL;
 	struct fwm_keybind *tree = fwm_parse_keybind(parents_num, parents,
 	                                             &keybind, true);
+	if (!tree) return FWM_FAILURE_KEYBIND_ALLOC;
 
 	keybind->actions = fwm_parse_action(actions_num, actions);
 
@@ -103,6 +104,7 @@ uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *pa
                                           size_t *id) {
 	struct fwm_keybind *tree = fwm_parse_keybind(parents_num, parents,
 	                                             NULL, false);
+	if (!tree) return FWM_FAILURE_KEYBIND_ALLOC;
 
 	struct fwm_keybind *found = fwm_find_keybind_by_keys(tree, fwm.keybinds);
 	uint8_t ret = FWM_FAILURE_KEYBIND_NOT_FOUND;
@@ -146,11 +148,16 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
 
 		if (!tree) {
 			tree = fwm_create_keybind(keymask, keycode, assign_id ? ++fwm.max_keybind_id : 0);
+			if (!tree) return NULL;
 			base = tree;
 			continue;
 		}
 
 	 	tree->child = fwm_create_keybind(keymask, keycode, assign_id ? ++fwm.max_keybind_id : 0);
+		if (!tree->child) {
+			fwm_free_keybind(base, true);
+			return NULL;
+		}
 	 	tree->child->parent = tree;
 	 	tree = tree->child;
 	}

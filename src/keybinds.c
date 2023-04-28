@@ -95,6 +95,7 @@ struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct
 
 struct fwm_keybind *fwm_create_keybind(uint16_t keymask, uint8_t keycode, size_t id) {
 	struct fwm_keybind *keybind = calloc(1, sizeof (struct fwm_keybind));
+	if (!keybind) return NULL;
 	keybind->keymask = keymask;
 	keybind->keycode = keycode;
 	keybind->id = id;
