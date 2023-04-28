@@ -11,6 +11,7 @@
 #include "keybinds.h"
 
 #define FWM_MAX_MESSAGE_LEN 255
+
 #define FWM_MAX_CLIENTS 30
 #define FWM_CLIENT_TIMEOUT 5
 
@@ -26,9 +27,6 @@ struct fwm {
 
 	int                socket_fd;
 	struct sockaddr_un socket_address;
-
-	/* declared in events.h */
-	struct fwm_event_handlers event_handlers;
 
 	/* declared in keybinds.h */
 	struct fwm_keybind *keybinds;

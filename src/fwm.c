@@ -24,12 +24,11 @@ struct fwm fwm;
 
 static struct pollfd poll_fds[2 + FWM_MAX_CLIENTS];
 static struct pollfd *clients = poll_fds + 2;
-static int clients_num = 0;
+static size_t clients_num = 0;
 
 int main(void) {
 	fwm_initialize();
 	fwm_initialize_socket();
-	fwm_initialize_event_handlers();
 
 	struct sigaction signal_action = {
 		.sa_handler = fwm_signal_handler_exit
@@ -43,7 +42,7 @@ int main(void) {
 	poll_fds[1].fd = fwm.socket_fd;
 	poll_fds[0].events = poll_fds[1].events = POLLIN;
 
-	for (int i = 0; i < FWM_MAX_CLIENTS; i++) {
+	for (size_t i = 0; i < FWM_MAX_CLIENTS; i++) {
 		clients[i].fd = -1;
 		clients[i].events = POLLIN;
 	}
@@ -54,7 +53,7 @@ int main(void) {
 
 	for (;;) {
 		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
-			for (int i = 0; i < clients_num; i++) {
+			for (size_t i = 0; i < clients_num; i++) {
 				bool client_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				/* Has it been longer than FWM_CLIENT_TIMEOUT seconds since the client
 				   established the connection, without sending a valid message? */
@@ -202,7 +201,7 @@ void fwm_exit(int status) {
 	if (fwm.keybinds)
 		fwm_remove_all_keybinds();
 
-	for (int i = 0; i < clients_num; i++)
+	for (size_t i = 0; i < clients_num; i++)
 		close(clients[i].fd);
 
 	close(fwm.socket_fd);

@@ -8,22 +8,16 @@
 #include "actions.h"
 #include "keybinds.h"
 
-void fwm_initialize_event_handlers(void) {
-	fwm.event_handlers.map_request = fwm_event_map_request;
-	fwm.event_handlers.configure_request = fwm_event_configure_request;
-	fwm.event_handlers.key_press = fwm_event_key_press;
-}
-
 void fwm_handle_event(xcb_generic_event_t *event) {
 	switch (event->response_type) {
 		case XCB_MAP_REQUEST:
-			fwm.event_handlers.map_request((xcb_map_request_event_t*)(event));
+			fwm_event_map_request((xcb_map_request_event_t*)(event));
 			break;
 		case XCB_CONFIGURE_REQUEST:
-			fwm.event_handlers.configure_request((xcb_configure_request_event_t*)(event));
+			fwm_event_configure_request((xcb_configure_request_event_t*)(event));
 			break;
 		case XCB_KEY_PRESS:
-			fwm.event_handlers.key_press((xcb_key_press_event_t*)(event));
+			fwm_event_key_press((xcb_key_press_event_t*)(event));
 			break;
 		default:
 			break;

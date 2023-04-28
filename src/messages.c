@@ -166,6 +166,7 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
 	return base;
 }
 
+// TODO: Write a proper damn actions parser
 struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions) {
 	struct fwm_action *action = NULL;
 	for (int i = 0; i < actions_num; i++) {
