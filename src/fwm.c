@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -31,12 +32,13 @@ int main(void) {
 	fwm_initialize_socket();
 
 	struct sigaction signal_action = {
-		.sa_handler = fwm_signal_handler_exit
+		.sa_handler = fwm_signal_handler
 	};
 
 	sigaction(SIGINT, &signal_action, NULL);
 	sigaction(SIGTERM, &signal_action, NULL);
 	sigaction(SIGHUP, &signal_action, NULL);
+	sigaction(SIGCHLD, &signal_action, NULL);
 
 	poll_fds[0].fd = fwm.conn_fd;
 	poll_fds[1].fd = fwm.socket_fd;
@@ -178,9 +180,14 @@ void fwm_initialize_socket(void) {
 		fwm_log_error_exit(EXIT_FAILURE, "Listening to the socket failed.\n");
 }
 
-void fwm_signal_handler_exit(int signal) {
-	fwm_log_info("Signal %i received, exiting..\n", signal);
-	fwm_exit(EXIT_SUCCESS);
+
+void fwm_signal_handler(int signal) {
+	if (signal == SIGCHLD) {
+		while (waitpid(-1, NULL, WNOHANG));
+	} else {
+		fwm_log_info("Signal %i received, exiting..\n", signal);
+		fwm_exit(EXIT_SUCCESS);
+	}
 }
 
 void fwm_connection_has_error(void) {
@@ -200,14 +207,17 @@ void fwm_connection_has_error(void) {
 	}
 }
 
+void fwm_close_fds(void) {
+	for (size_t i = 0; i < 2 + clients_num; i++)
+		close(poll_fds[i].fd);
+}
+
 void fwm_exit(int status) {
 	if (fwm.keybinds)
 		fwm_remove_all_keybinds();
 
-	for (size_t i = 0; i < clients_num; i++)
-		close(clients[i].fd);
+	fwm_close_fds();
 
-	close(fwm.socket_fd);
 	remove(fwm.socket_address.sun_path);
 
 	xcb_flush(fwm.conn);
