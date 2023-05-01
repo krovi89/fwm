@@ -20,7 +20,7 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 		case FWM_NO_REQUEST:
 			break;
 		case FWM_REQUEST_EXIT:
-			fwm_log_info("Received FWM_REQUEST_EXIT, exiting..\n");
+			fwm_log(FWM_LOG_INFO, "Received FWM_REQUEST_EXIT, exiting..\n");
 			fwm_exit(EXIT_SUCCESS);
 			break;
 		case FWM_REQUEST_KEYBIND_ADD:

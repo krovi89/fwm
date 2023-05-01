@@ -1,6 +1,8 @@
 #include <stdlib.h>
 
 #include <unistd.h>
+#include <signal.h>
+
 #include <xcb/xproto.h>
 
 #include "actions.h"
@@ -9,15 +11,17 @@
 
 void fwm_action_execute(void *args, xcb_window_t window) {
 	(void)(window);
+
 	struct fwm_action_execute_args *execute_args = args;
 
 	if (fork() == 0) {
-		fwm_close_fds();
+		fwm_set_signal_handler(SIG_DFL); // no actual reason to do this
+		fwm_close_files();
 
 		char *command[4] = { fwm.exec_shell, "-c", execute_args->command, NULL };
 		execvp(command[0], command);
 
-		fwm_log_error("Failed to spawn \"%s\"\n", fwm.exec_shell);
+		fwm_log(FWM_LOG_INFO, "Failed to spawn \"%s\"\n", fwm.exec_shell);
 		exit(EXIT_FAILURE);
 	}
 }

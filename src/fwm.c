@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -28,17 +29,13 @@ static struct pollfd *clients = poll_fds + 2;
 static size_t clients_num = 0;
 
 int main(void) {
+	fwm.cache_dir = fwm_initialize_cache();
+	fwm.log_file = fwm_initialize_log_file(fwm.cache_dir);
+
 	fwm_initialize();
 	fwm_initialize_socket();
 
-	struct sigaction signal_action = {
-		.sa_handler = fwm_signal_handler
-	};
-
-	sigaction(SIGINT, &signal_action, NULL);
-	sigaction(SIGTERM, &signal_action, NULL);
-	sigaction(SIGHUP, &signal_action, NULL);
-	sigaction(SIGCHLD, &signal_action, NULL);
+	fwm_set_signal_handler(fwm_signal_handler);
 
 	poll_fds[0].fd = fwm.conn_fd;
 	poll_fds[1].fd = fwm.socket_fd;
@@ -65,7 +62,7 @@ int main(void) {
 				if (client_has_error || client_timed_out) {
 					close(clients[i].fd);
 
-					/* we don't need to memmove if the client
+					/* no reason to memmove if the client
 					   we're removing is the last one */
 					if (i + 1 != clients_num)
 						memmove(&clients[i], &clients[i] + 1, sizeof (struct pollfd) * clients_num - (i + 1));
@@ -97,8 +94,8 @@ int main(void) {
 			/* Establishing connections with new clients */
 			if (poll_fds[1].revents & POLLIN) {
 				if (clients_num == FWM_MAX_CLIENTS) {
-					int rejected_fd = accept(fwm.socket_fd, NULL, 0);
-					close(rejected_fd);
+					close(accept(fwm.socket_fd, NULL, 0));
+					fwm_log(FWM_LOG_ERROR, "Rejected client: Maximum number of clients already connected");
 
 					continue;
 				}
@@ -144,16 +141,21 @@ void fwm_initialize(void) {
                                                        xcb_change_window_attributes_checked(fwm.conn, fwm.root,
                                                                                             XCB_CW_EVENT_MASK,
                                                                                             &(uint32_t){ FWM_ROOT_EVENT_MASK }));
-	if (error)
-		fwm_log_error_exit(EXIT_FAILURE, "Could not register for substructure redirection. Is another window manager running?\n");
+	if (error) {
+		fwm_log(FWM_LOG_ERROR, "Could not register for substructure redirection. Is another window manager running?\n");
+		fwm_exit(EXIT_FAILURE);
+	}
 
-	if (!(fwm.exec_shell = getenv(FWM_EXEC_SHELL_ENV)) && !(fwm.exec_shell = getenv("SHELL")))
+
+	if (!(fwm.exec_shell = getenv("SHELL")))
 		fwm.exec_shell = FWM_EXEC_SHELL;
 }
 
 void fwm_initialize_socket(void) {
-	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fwm_log_error_exit(EXIT_FAILURE, "Socket creation failed.\n");
+	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		fwm_log(FWM_LOG_ERROR, "Socket creation failed.\n");
+		fwm_exit(EXIT_FAILURE);
+	}
 
 	char *host_name;
 	int display_number, screen_number;
@@ -166,26 +168,67 @@ void fwm_initialize_socket(void) {
 
 	free(host_name);
 
-	if (ret > (int) sizeof fwm.socket_address.sun_path - 1)
-		fwm_log_warning("Socket path is too long.\n");
-	else if (ret < 0)
-		fwm_log_error_exit(EXIT_FAILURE, "Failed to write socket path.\n");
+	if (ret > (int)(sizeof fwm.socket_address.sun_path - 1)) {
+		fwm_log(FWM_LOG_WARNING, "Socket path is too long.\n");
+	} else if (ret < 0) {
+		fwm_log(FWM_LOG_ERROR, "Failed to write socket path.\n");
+		fwm_exit(EXIT_FAILURE);
+	}
 
 	remove(fwm.socket_address.sun_path);
 
-	if (bind(fwm.socket_fd, (struct sockaddr*)(&fwm.socket_address), sizeof fwm.socket_address) == -1)
-		fwm_log_error_exit(EXIT_FAILURE, "Socket binding failed.\n");
+	if (bind(fwm.socket_fd, (struct sockaddr*)(&fwm.socket_address), sizeof fwm.socket_address) == -1) {
+		fwm_log(FWM_LOG_ERROR, "Socket binding failed.\n");
+		fwm_exit(EXIT_FAILURE);
+	}
 
-	if (listen(fwm.socket_fd, SOMAXCONN) == -1)
-		fwm_log_error_exit(EXIT_FAILURE, "Listening to the socket failed.\n");
+	if (listen(fwm.socket_fd, SOMAXCONN) == -1) {
+		fwm_log(FWM_LOG_ERROR, "Listening to the socket failed.\n");
+		fwm_exit(EXIT_FAILURE);
+	}
 }
 
+char *fwm_initialize_cache(void) {
+	char *home = getenv("XDG_CACHE_HOME");
+	static char path[4096];
+
+	int ret;
+	if (home) {
+		if (home[0] == '\0') return NULL;
+		ret = snprintf(path, sizeof path, "%s/fwm", home);
+	} else {
+		home = getenv("HOME");
+		if (!home || home[0] == '\0') return NULL;
+		ret = snprintf(path, sizeof path, "%s/.cache/fwm", home);
+	}
+
+	if ((ret > (int)(sizeof path - 1)) || ret < 0)
+		return NULL;
+
+	struct stat stat_buf;
+	if (stat(path, &stat_buf) == 0) return path;
+	// TODO: Create the directory's parents
+	if (mkdir(path, 0700) == -1) return NULL;
+
+	return path;
+}
+
+void fwm_set_signal_handler(void (*handler)(int)) {
+	struct sigaction signal_action = {
+		.sa_handler = handler
+	};
+
+	sigaction(SIGINT, &signal_action, NULL);
+	sigaction(SIGTERM, &signal_action, NULL);
+	sigaction(SIGHUP, &signal_action, NULL);
+	sigaction(SIGCHLD, &signal_action, NULL);
+}
 
 void fwm_signal_handler(int signal) {
 	if (signal == SIGCHLD) {
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	} else {
-		fwm_log_info("Signal %i received, exiting..\n", signal);
+		fwm_log(FWM_LOG_INFO, "Signal %i received, exiting...\n", signal);
 		fwm_exit(EXIT_SUCCESS);
 	}
 }
@@ -194,29 +237,32 @@ void fwm_connection_has_error(void) {
 	int error_code = xcb_connection_has_error(fwm.conn);
 	if (error_code) {
 		char *error_strings[XCB_CONN_CLOSED_FDPASSING_FAILED + 1] = {
-			[XCB_CONN_ERROR]                   = "XCB_CONN_ERROR",
-			[XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "XCB_CONN_CLOSED_EXT_NOTSUPPORTED",
-			[XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "XCB_CONN_CLOSED_MEM_INSUFFICIENT",
-			[XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "XCB_CONN_CLOSED_REQ_LEN_EXCEED",
-			[XCB_CONN_CLOSED_PARSE_ERR]        = "XCB_CONN_CLOSED_PARSE_ERR",
-			[XCB_CONN_CLOSED_INVALID_SCREEN]   = "XCB_CONN_CLOSED_INVALID_SCREEN",
-			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "XCB_CONN_CLOSED_FDPASSING_FAILED",
+			[XCB_CONN_ERROR]                   = "Socket/pipe/stream error",
+			[XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "Extension unsupported",
+			[XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "Insufficient memory",
+			[XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "Request length exceeded",
+			[XCB_CONN_CLOSED_PARSE_ERR]        = "Failed to parse connection string",
+			[XCB_CONN_CLOSED_INVALID_SCREEN]   = "Invalid screen",
+			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "File descriptor passing failed",
 		};
 
-		fwm_log_error_exit(error_code, "Could not connect to the X server: %s (%u).\n", error_strings[error_code], error_code);
+		fwm_log(FWM_LOG_ERROR, "Connecting to the X server failed: %s (%u).\n", error_strings[error_code], error_code);
+		fwm_exit(error_code);
 	}
 }
 
-void fwm_close_fds(void) {
+void fwm_close_files(void) {
 	for (size_t i = 0; i < 2 + clients_num; i++)
 		close(poll_fds[i].fd);
+
+	fclose(fwm.log_file);
 }
 
 void fwm_exit(int status) {
 	if (fwm.keybinds)
 		fwm_remove_all_keybinds();
 
-	fwm_close_fds();
+	fwm_close_files();
 
 	remove(fwm.socket_address.sun_path);
 

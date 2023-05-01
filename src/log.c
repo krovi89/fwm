@@ -2,50 +2,70 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include <sys/time.h>
+
 #include "fwm.h"
 #include "log.h"
 
-// TODO: output log messages to a file
+FILE *fwm_initialize_log_file(char *directory) {
+	if (!directory) return NULL;
 
-static int fwm_log(FILE *stream, const char *type, const char *type_escape, const char *message_escape, const char *format, va_list argument_list) {
-	fprintf(stream, "%s%s:%s ", type_escape, type, message_escape);
-	int ret = vfprintf(stream, format, argument_list);
+	static char path[4096];
+
+	time_t current_time = time(NULL);
+	int ret = snprintf(path, sizeof path, "%s/fwm-%li.log", directory, current_time);
+	if ((ret > (int)(sizeof path - 1)) || ret < 0)
+		return NULL;
+
+	FILE *log_file = fopen(path, "w");
+	if (!log_file) {
+		return NULL;
+	}
+
+	return log_file;
+}
+
+static int fwm_log_va_list(FILE *stream,
+                           const char *type, const char *type_escape,
+                           const char *format_escape, const char *format,
+                           va_list arg) {
+	int ret = 0;
+
+	time_t current_time = time(NULL);
+
+	if (fwm.log_file) {
+		va_list ag;
+		va_copy(ag, arg);
+
+		fprintf(fwm.log_file, "%li: %s: ", current_time, type);
+		vfprintf(fwm.log_file, format, ag);
+
+		va_end(ag);
+	}
+
+	if (stream) {
+		fprintf(stream, "%li: %s%s:%s ", current_time, type_escape, type, format_escape);
+		ret = vfprintf(stream, format, arg);
+	}
 
 	return ret;
 }
 
-int fwm_log_error(const char *format, ...) {
+void fwm_log(enum fwm_log_type type, const char *format, ...) {
 	va_list argument_list;
 	va_start(argument_list, format);
-	int ret = fwm_log(stderr, "ERROR", /* bold red */ "\033[31;1m", /* reset */ "\033[0m", format, argument_list);
+
+	switch (type) {
+		case FWM_LOG_INFO:
+			fwm_log_va_list(NULL, "INFO", /* bold blue */ "\033[34;1m", /* reset */ "\033[0m", format, argument_list);
+			break;
+		case FWM_LOG_WARNING:
+			fwm_log_va_list(stderr, "WARNING", /* bold yellow */ "\033[33;1m", /* reset */ "\033[0m", format, argument_list);
+			break;
+		case FWM_LOG_ERROR:
+			fwm_log_va_list(stderr, "ERROR", /* bold red */ "\033[31;1m", /* reset */ "\033[0m", format, argument_list);
+			break;
+	}
+
 	va_end(argument_list);
-
-	return ret;
-}
-
-void fwm_log_error_exit(int ret, const char *format, ...) {
-	va_list argument_list;
-	va_start(argument_list, format);
-	fwm_log(stderr, "ERROR", /* bold red */ "\033[31;1m", /* reset */ "\033[0m", format, argument_list);
-	va_end(argument_list);
-
-	fwm_exit(ret);
-}
-
-int fwm_log_warning(const char *format, ...) {
-	va_list argument_list;
-	va_start(argument_list, format);
-	int ret = fwm_log(stderr, "WARNING", /* bold yellow */ "\033[33;1m", /* reset */ "\033[0m", format, argument_list);
-	va_end(argument_list);
-
-	return ret;
-}
-
-int fwm_log_info(const char *format, ...) {
-	va_list argument_list;
-	va_start(argument_list, format);
-	int ret = fwm_log(stdout, "INFO", /* bold blue */ "\033[34;1m", /* reset */ "\033[0m", format, argument_list);
-	va_end(argument_list);
-
-	return ret;
 }

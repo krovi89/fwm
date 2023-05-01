@@ -1,9 +1,15 @@
 #ifndef LOG_H
 #define LOG_H
 
-int fwm_log_error(const char *format, ...);
-void fwm_log_error_exit(int ret, const char *format, ...);
-int fwm_log_warning(const char *format, ...);
-int fwm_log_info(const char *format, ...);
+#include <stdio.h>
+
+enum fwm_log_type {
+	FWM_LOG_INFO,
+	FWM_LOG_WARNING,
+	FWM_LOG_ERROR
+};
+
+FILE *fwm_initialize_log_file(char *directory);
+void fwm_log(enum fwm_log_type type, const char *format, ...);
 
 #endif
