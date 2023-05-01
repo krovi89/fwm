@@ -49,7 +49,7 @@ int main(void) {
 		clients[i].events = POLLIN;
 	}
 
-	time_t client_connection_times[FWM_MAX_CLIENTS] = {0};
+	time_t client_connection_times[FWM_MAX_CLIENTS] = { 0 };
 
 	uint8_t message[FWM_MAX_MESSAGE_LEN];
 
@@ -173,7 +173,7 @@ void fwm_initialize_socket(void) {
 
 	remove(fwm.socket_address.sun_path);
 
-	if (bind(fwm.socket_fd, (struct sockaddr*)&fwm.socket_address, sizeof fwm.socket_address) == -1)
+	if (bind(fwm.socket_fd, (struct sockaddr*)(&fwm.socket_address), sizeof fwm.socket_address) == -1)
 		fwm_log_error_exit(EXIT_FAILURE, "Socket binding failed.\n");
 
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1)
@@ -183,7 +183,7 @@ void fwm_initialize_socket(void) {
 
 void fwm_signal_handler(int signal) {
 	if (signal == SIGCHLD) {
-		while (waitpid(-1, NULL, WNOHANG));
+		while (waitpid(-1, NULL, WNOHANG) > 0);
 	} else {
 		fwm_log_info("Signal %i received, exiting..\n", signal);
 		fwm_exit(EXIT_SUCCESS);

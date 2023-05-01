@@ -120,7 +120,7 @@ uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *pa
 }
 
 void fwm_compose_send_response(int client_fd, uint8_t response_type, void *details) {
-	static uint8_t message[FWM_MAX_MESSAGE_LEN] = {0};
+	static uint8_t message[FWM_MAX_MESSAGE_LEN] = { 0 };
 	memcpy(message, message_header, sizeof message_header);
 
 	uint8_t *position = message + sizeof message_header;
@@ -192,7 +192,7 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 
 				struct fwm_action_execute_args *args = calloc(1, sizeof (struct fwm_action_execute_args));
 
-				if (actions[command_length - 1] != '\0') {
+				if (actions[command_length - 1] != '\0') { // for non-null-terminated strings
 					args->command = malloc(command_length + 1);
 					args->command[command_length] = '\0';
 				} else {

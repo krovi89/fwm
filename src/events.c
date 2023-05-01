@@ -30,7 +30,7 @@ void fwm_event_map_request(xcb_map_request_event_t *event) {
 
 void fwm_event_configure_request(xcb_configure_request_event_t *event) {
 	int i = 0;
-	int32_t value_list[7] = {0};
+	int32_t value_list[7] = { 0 };
 
 	if (event->value_mask & XCB_CONFIG_WINDOW_X)
 		value_list[i++] = event->x;
