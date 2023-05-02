@@ -75,7 +75,8 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
-	size_t id = *(size_t*)(message);
+	size_t id;
+	memcpy(&id, message, sizeof (size_t));
 
 	uint8_t response = fwm_handle_request_remove_keybind(id);
 	fwm_compose_send_response(client_fd, response, NULL);
@@ -144,7 +145,8 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
                                       struct fwm_keybind **keybind, bool assign_id) {
 	struct fwm_keybind *base = NULL, *tree = NULL;
 	for (uint8_t i = 0; i < parents_num + 1; i++) {
-		uint16_t keymask = *(uint16_t*)(parents);
+		uint16_t keymask;
+		memcpy(&keymask, parents, sizeof keymask);
 		parents += sizeof (uint16_t);
 		uint16_t keycode = *parents++;
 
@@ -187,7 +189,8 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 				action->args = NULL;
 		 		break;
 			case FWM_ACTION_EXECUTE: {
-				size_t command_length = *(size_t*)(actions);
+				size_t command_length;
+				memcpy(&command_length, actions, sizeof command_length);
 				actions += sizeof (size_t);
 
 				struct fwm_action_execute_args *args = calloc(1, sizeof (struct fwm_action_execute_args));

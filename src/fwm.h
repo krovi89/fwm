@@ -34,7 +34,9 @@ struct fwm {
 
 	struct pollfd *poll_fds;
 	struct pollfd *clients;
-	size_t         clients_num;
+
+	size_t  clients_num;
+	time_t *client_connection_times;
 
 	// should be moved to an options struct
 	char *exec_shell;
@@ -55,6 +57,7 @@ void fwm_initialize(void);
 void fwm_initialize_x(void);
 void fwm_initialize_socket(void);
 void fwm_initialize_poll_fds(void);
+void fwm_initialize_clients(void);
 void fwm_set_signal_handler(void (*handler)(int));
 void fwm_signal_handler(int signal);
 void fwm_connection_has_error(void);

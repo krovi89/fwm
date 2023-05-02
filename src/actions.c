@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <unistd.h>
@@ -7,6 +8,7 @@
 
 #include "actions.h"
 #include "fwm.h"
+#include "files.h"
 #include "log.h"
 
 void fwm_action_execute(void *args, xcb_window_t window) {
@@ -21,7 +23,10 @@ void fwm_action_execute(void *args, xcb_window_t window) {
 		char *command[4] = { fwm.exec_shell, "-c", execute_args->command, NULL };
 		execvp(command[0], command);
 
+		fwm_open_log_file(NULL, NULL);
 		fwm_log(FWM_LOG_INFO, "Failed to spawn \"%s\"\n", fwm.exec_shell);
+		if (fwm.log_file) fclose(fwm.log_file);
+
 		exit(EXIT_FAILURE);
 	}
 }

@@ -22,7 +22,7 @@ struct fwm_keybind {
 bool fwm_assimilate_keybind(struct fwm_keybind *keybind);
 
 void fwm_set_keybinds_position(struct fwm_keybind *keybind);
-void fwm_grab_keybinds(const struct fwm_keybind *keybind);
+void fwm_grab_keybind(const struct fwm_keybind *keybind);
 
 struct fwm_keybind *fwm_find_keybind_by_id(size_t id, struct fwm_keybind *current);
 struct fwm_keybind *fwm_find_keybind_by_keys(struct fwm_keybind *keybind, struct fwm_keybind *current);

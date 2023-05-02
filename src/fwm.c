@@ -5,9 +5,9 @@
 #include <string.h>
 
 #include <unistd.h>
-#include <poll.h>
 #include <signal.h>
 #include <time.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -27,18 +27,14 @@ struct fwm fwm;
 int main(void) {
 	fwm_initialize();
 
-
-	time_t client_connection_times[FWM_MAX_CLIENTS] = { 0 };
-
 	uint8_t message[FWM_MAX_MESSAGE_LEN];
-
 	for (;;) {
 		if (poll(fwm.poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (size_t i = 0; i < fwm.clients_num; i++) {
 				bool client_has_error = fwm.clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				/* Has it been longer than FWM_CLIENT_TIMEOUT seconds since the client
 				   established the connection, without sending a valid message? */
-				bool client_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
+				bool client_timed_out = fwm.client_connection_times[i] && time(NULL) - fwm.client_connection_times[i] > FWM_CLIENT_TIMEOUT;
 
 				/* clean up clients */
 				if (client_has_error || client_timed_out) {
@@ -69,7 +65,7 @@ int main(void) {
 					fwm_handle_request(fwm.clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */
-					client_connection_times[i] = 0;
+					fwm.client_connection_times[i] = 0;
 				}
 			}
 
@@ -84,7 +80,7 @@ int main(void) {
 
 				fwm.clients[fwm.clients_num].fd = accept(fwm.socket_fd, NULL, 0);
 				/* Set the time of connection for this client */
-				client_connection_times[fwm.clients_num++] = time(NULL);
+				fwm.client_connection_times[fwm.clients_num++] = time(NULL);
 			}
 
 			if (fwm.poll_fds[0].revents & POLLIN) {
@@ -106,17 +102,21 @@ void fwm_initialize(void) {
 
 	fwm_set_signal_handler(fwm_signal_handler);
 
-	fwm.socket_fd = -1;
-
-	fwm_initialize_x();
-
 	if (!(fwm.exec_shell = getenv("SHELL")))
 		fwm.exec_shell = FWM_EXEC_SHELL;
 
 	fwm.show_diagnostics = false;
 
+	fwm.socket_fd = -1;
+
+	fwm_initialize_x();
 	fwm_initialize_socket();
 	fwm_initialize_poll_fds();
+	fwm_initialize_clients();
+
+	fwm.keybinds = NULL;
+	fwm.current_position = NULL;
+	fwm.max_keybind_id = 0;
 }
 
 void fwm_initialize_x(void) {
@@ -151,7 +151,7 @@ void fwm_initialize_socket(void) {
 
 	char *host_name;
 	int display_number, screen_number;
-	/* fwm_initialize already checks for errors with the display string */
+	/* fwm_initialize_x already checks for errors with the display string */
 	xcb_parse_display(NULL, &host_name, &display_number, &screen_number);
 
 	fwm.socket_address.sun_family = AF_UNIX;
@@ -181,16 +181,29 @@ void fwm_initialize_socket(void) {
 }
 
 void fwm_initialize_poll_fds(void) {
-	fwm.poll_fds = malloc(sizeof (struct pollfd) * (2 + FWM_MAX_CLIENTS));
-	fwm.clients = fwm.poll_fds + 2;
+	fwm.poll_fds = calloc(2 + FWM_MAX_CLIENTS, sizeof (struct pollfd));
+	if (!fwm.poll_fds) {
+		fwm_log(FWM_LOG_ERROR, "Failed to allocate poll structures");
+		fwm_exit(EXIT_FAILURE);
+	}
 
 	fwm.poll_fds[0].fd = fwm.conn_fd;
 	fwm.poll_fds[1].fd = fwm.socket_fd;
 	fwm.poll_fds[0].events = fwm.poll_fds[1].events = POLLIN;
+}
 
+void fwm_initialize_clients(void) {
+	fwm.clients = fwm.poll_fds + 2;
 	for (size_t i = 0; i < FWM_MAX_CLIENTS; i++) {
 		fwm.clients[i].fd = -1;
 		fwm.clients[i].events = POLLIN;
+	}
+
+	fwm.clients_num = 0;
+	fwm.client_connection_times = calloc(FWM_MAX_CLIENTS, sizeof (time_t));
+	if (!fwm.client_connection_times) {
+		fwm_log(FWM_LOG_ERROR, "Failed to allocate memory for client connection times");
+		fwm_exit(EXIT_FAILURE);
 	}
 }
 
@@ -222,7 +235,7 @@ void fwm_connection_has_error(void) {
 			[XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "Extension unsupported",
 			[XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "Insufficient memory",
 			[XCB_CONN_CLOSED_REQ_LEN_EXCEED]   = "Request length exceeded",
-			[XCB_CONN_CLOSED_PARSE_ERR]        = "Failed to parse connection string",
+			[XCB_CONN_CLOSED_PARSE_ERR]        = "Failed to parse display string",
 			[XCB_CONN_CLOSED_INVALID_SCREEN]   = "Invalid screen",
 			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "File descriptor passing failed",
 		};
@@ -250,6 +263,8 @@ void fwm_exit(int status) {
 		fwm_remove_all_keybinds();
 
 	fwm_close_files();
+	free(fwm.poll_fds);
+	free(fwm.client_connection_times);
 
 	remove(fwm.socket_address.sun_path);
 

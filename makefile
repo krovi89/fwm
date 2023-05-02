@@ -1,5 +1,4 @@
-CFLAGS += -std=c99 -pedantic -Wall -Wextra \
-          -D _POSIX_C_SOURCE
+CFLAGS += -std=c99 -pedantic -Wall -Wextra
 LDLIBS := -lxcb
 
 FWM_SRCDIR ?= src

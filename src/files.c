@@ -1,19 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <time.h>
 #include <sys/stat.h>
 
 #include "files.h"
 #include "fwm.h"
 
 void fwm_initialize_files(void) {
-	fwm.cache_dir = fwm_create_cache();
+	fwm.cache_dir = fwm_mkdir_cache();
 
-	fwm_initialize_log_file(fwm.cache_dir);
+	fwm_open_log_file(fwm.cache_dir, "fwm.log");
 }
 
-char *fwm_create_cache(void) {
+char *fwm_mkdir_cache(void) {
 	char *home = getenv("XDG_CACHE_HOME");
 	static char path[4096];
 
@@ -38,17 +37,23 @@ char *fwm_create_cache(void) {
 	return path;
 }
 
-void fwm_initialize_log_file(char *directory) {
-	if (!directory) return;
-
+void fwm_open_log_file(char *directory, char *file_name) {
 	static char path[4096];
 
-	time_t current_time = time(NULL);
-	int ret = snprintf(path, sizeof path, "%s/fwm-%li.log", directory, current_time);
-	if ((ret > (int)(sizeof path - 1)) || ret < 0)
-		return;
+	if (directory && file_name) {
+		int ret = snprintf(path, sizeof path, "%s/%s", directory, file_name);
+		if ((ret > (int)(sizeof path - 1)) || ret < 0)
+			return;
 
-	FILE *log_file = fopen(path, "w");
+		if (fwm.log_file) {
+			fclose(fwm.log_file);
+			fwm.log_file = NULL;
+		}
+	}
+
+	if (path[0] == '\0') return;
+
+	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
 		return;
 	}

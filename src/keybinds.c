@@ -9,8 +9,7 @@
 bool fwm_assimilate_keybind(struct fwm_keybind *new) {
 	if (!fwm.keybinds) {
 		fwm.keybinds = new;
-		fwm.current_position = new;
-		xcb_grab_key(fwm.conn, 0, fwm.root, new->keymask, new->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+		fwm_set_keybinds_position(fwm.keybinds);
 		return true;
 	}
 
@@ -22,22 +21,23 @@ bool fwm_assimilate_keybind(struct fwm_keybind *new) {
 				return false;
 			}
 
+			current = current->child;
+
 			struct fwm_keybind *temp = new->child;
 			free(new);
 			new = temp;
 			new->parent = current;
-
-			current = current->child;
 		} else {
 			if (!current->next) {
 				new->previous = current;
 				current->next = new;
 
 				if (current == fwm.current_position)
-					xcb_grab_key(fwm.conn, 0, fwm.root, new->keymask, new->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+					fwm_grab_keybind(new);
 
 				break;
 			}
+
 			current = current->next;
 		}
 	}
@@ -49,13 +49,16 @@ void fwm_set_keybinds_position(struct fwm_keybind *position) {
 	fwm.current_position = position;
 	xcb_ungrab_key(fwm.conn, XCB_GRAB_ANY, fwm.root, XCB_MOD_MASK_ANY);
 	if (position)
-		fwm_grab_keybinds(position);
+		fwm_grab_keybind(position);
 }
 
-void fwm_grab_keybinds(const struct fwm_keybind *keybinds) {
-	while (keybinds) {
-		xcb_grab_key(fwm.conn, 0, fwm.root, keybinds->keymask, keybinds->keycode, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-		keybinds = keybinds->next;
+void fwm_grab_keybind(const struct fwm_keybind *keybind) {
+	while (keybind) {
+		xcb_grab_key(fwm.conn, 0, fwm.root,
+		             keybind->keymask, keybind->keycode,
+		             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+
+		keybind = keybind->next;
 	}
 }
 
