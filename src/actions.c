@@ -24,7 +24,7 @@ void fwm_action_execute(void *args, xcb_window_t window) {
 		execvp(command[0], command);
 
 		fwm_open_log_file(NULL, NULL);
-		fwm_log(FWM_LOG_INFO, "Failed to spawn \"%s\"\n", fwm.exec_shell);
+		fwm_log(FWM_LOG_DIAGNOSTIC, "Failed to spawn \"%s\"\n", fwm.exec_shell);
 		if (fwm.log_file) fclose(fwm.log_file);
 
 		exit(EXIT_FAILURE);

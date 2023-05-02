@@ -51,7 +51,7 @@ void fwm_log(enum fwm_log_type type, const char *format, ...) {
 			else
 				stream = NULL;
 
-			fwm_log_va_list(stream, /* bold magenta */ "\033[31;1m", "DIAGNOSTIC", /* reset */ "\033[0m", format, argument_list);
+			fwm_log_va_list(stream, /* bold magenta */ "\033[35;1m", "DIAGNOSTIC", /* reset */ "\033[0m", format, argument_list);
 			break;
 		}
 		case FWM_LOG_WARNING:

@@ -5,9 +5,9 @@
 #include <string.h>
 
 #include <unistd.h>
-#include <signal.h>
 #include <time.h>
 #include <poll.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -38,6 +38,11 @@ int main(void) {
 
 				/* clean up clients */
 				if (client_has_error || client_timed_out) {
+					if (client_has_error)
+						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Poll error %i.\n", i, fwm.clients[i].revents);
+					else if (client_timed_out)
+						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Timed out.\n", i);
+
 					close(fwm.clients[i].fd);
 
 					/* no reason to memmove if the client
@@ -53,6 +58,7 @@ int main(void) {
 				/* Read messages from valid clients */
 				if (fwm.clients[i].revents & POLLIN) {
 					int message_length = recv(fwm.clients[i].fd, message, sizeof message, 0);
+					fwm_log(FWM_LOG_DIAGNOSTIC, "Received message of length %i from client %zu.\n", message_length, i);
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
@@ -62,6 +68,9 @@ int main(void) {
 					int request_length = message_length - (sizeof message_header + 1);
 					uint8_t request_type = *(message + sizeof message_header);
 					const uint8_t *request_message = message + (sizeof message_header + 1);
+
+					fwm_log(FWM_LOG_DIAGNOSTIC, "Request type: %u\n", request_type);
+
 					fwm_handle_request(fwm.clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */
@@ -77,6 +86,8 @@ int main(void) {
 
 					continue;
 				}
+
+				fwm_log(FWM_LOG_DIAGNOSTIC, "Adding client number %zu.\n", fwm.clients_num);
 
 				fwm.clients[fwm.clients_num].fd = accept(fwm.socket_fd, NULL, 0);
 				/* Set the time of connection for this client */
@@ -100,12 +111,14 @@ int main(void) {
 void fwm_initialize(void) {
 	fwm_initialize_files();
 
+	fwm.show_diagnostics = false;
+
 	fwm_set_signal_handler(fwm_signal_handler);
 
 	if (!(fwm.exec_shell = getenv("SHELL")))
 		fwm.exec_shell = FWM_EXEC_SHELL;
 
-	fwm.show_diagnostics = false;
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Exec shell set to \"%s\".\n", fwm.exec_shell);
 
 	fwm.socket_fd = -1;
 
@@ -159,6 +172,8 @@ void fwm_initialize_socket(void) {
 	                   "/tmp/fwm_%s_%i-%i", host_name, display_number, screen_number);
 
 	free(host_name);
+
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Socket path set to \"%s\".\n", fwm.socket_address.sun_path);
 
 	if (ret > (int)(sizeof fwm.socket_address.sun_path - 1)) {
 		fwm_log(FWM_LOG_WARNING, "Socket path is too long.\n");
