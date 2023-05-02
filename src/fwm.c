@@ -11,7 +11,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
@@ -20,61 +19,44 @@
 #include "events.h"
 #include "keybinds.h"
 #include "messages.h"
+#include "files.h"
 #include "log.h"
 
 struct fwm fwm;
 
-static struct pollfd poll_fds[2 + FWM_MAX_CLIENTS];
-static struct pollfd *clients = poll_fds + 2;
-static size_t clients_num = 0;
-
 int main(void) {
-	fwm.cache_dir = fwm_initialize_cache();
-	fwm.log_file = fwm_initialize_log_file(fwm.cache_dir);
-
 	fwm_initialize();
-	fwm_initialize_socket();
 
-	fwm_set_signal_handler(fwm_signal_handler);
-
-	poll_fds[0].fd = fwm.conn_fd;
-	poll_fds[1].fd = fwm.socket_fd;
-	poll_fds[0].events = poll_fds[1].events = POLLIN;
-
-	for (size_t i = 0; i < FWM_MAX_CLIENTS; i++) {
-		clients[i].fd = -1;
-		clients[i].events = POLLIN;
-	}
 
 	time_t client_connection_times[FWM_MAX_CLIENTS] = { 0 };
 
 	uint8_t message[FWM_MAX_MESSAGE_LEN];
 
 	for (;;) {
-		if (poll(poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
-			for (size_t i = 0; i < clients_num; i++) {
-				bool client_has_error = clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
+		if (poll(fwm.poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
+			for (size_t i = 0; i < fwm.clients_num; i++) {
+				bool client_has_error = fwm.clients[i].revents & (POLLERR | POLLNVAL | POLLHUP);
 				/* Has it been longer than FWM_CLIENT_TIMEOUT seconds since the client
 				   established the connection, without sending a valid message? */
 				bool client_timed_out = client_connection_times[i] && time(NULL) - client_connection_times[i] > FWM_CLIENT_TIMEOUT;
 
 				/* clean up clients */
 				if (client_has_error || client_timed_out) {
-					close(clients[i].fd);
+					close(fwm.clients[i].fd);
 
 					/* no reason to memmove if the client
 					   we're removing is the last one */
-					if (i + 1 != clients_num)
-						memmove(&clients[i], &clients[i] + 1, sizeof (struct pollfd) * clients_num - (i + 1));
+					if (i + 1 != fwm.clients_num)
+						memmove(&fwm.clients[i], &fwm.clients[i] + 1, sizeof (struct pollfd) * fwm.clients_num - (i + 1));
 
-					clients[--clients_num].fd = -1;
+					fwm.clients[--fwm.clients_num].fd = -1;
 
 					continue;
 				}
 
 				/* Read messages from valid clients */
-				if (clients[i].revents & POLLIN) {
-					int message_length = recv(clients[i].fd, message, sizeof message, 0);
+				if (fwm.clients[i].revents & POLLIN) {
+					int message_length = recv(fwm.clients[i].fd, message, sizeof message, 0);
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
@@ -84,7 +66,7 @@ int main(void) {
 					int request_length = message_length - (sizeof message_header + 1);
 					uint8_t request_type = *(message + sizeof message_header);
 					const uint8_t *request_message = message + (sizeof message_header + 1);
-					fwm_handle_request(clients[i].fd, request_type, request_message, request_length);
+					fwm_handle_request(fwm.clients[i].fd, request_type, request_message, request_length);
 
 					/* Disable the timeout for this client */
 					client_connection_times[i] = 0;
@@ -92,20 +74,20 @@ int main(void) {
 			}
 
 			/* Establishing connections with new clients */
-			if (poll_fds[1].revents & POLLIN) {
-				if (clients_num == FWM_MAX_CLIENTS) {
+			if (fwm.poll_fds[1].revents & POLLIN) {
+				if (fwm.clients_num == FWM_MAX_CLIENTS) {
 					close(accept(fwm.socket_fd, NULL, 0));
 					fwm_log(FWM_LOG_ERROR, "Rejected client: Maximum number of clients already connected");
 
 					continue;
 				}
 
-				clients[clients_num].fd = accept(fwm.socket_fd, NULL, 0);
+				fwm.clients[fwm.clients_num].fd = accept(fwm.socket_fd, NULL, 0);
 				/* Set the time of connection for this client */
-				client_connection_times[clients_num++] = time(NULL);
+				client_connection_times[fwm.clients_num++] = time(NULL);
 			}
 
-			if (poll_fds[0].revents & POLLIN) {
+			if (fwm.poll_fds[0].revents & POLLIN) {
 				xcb_generic_event_t *event;
 				while ((event = xcb_poll_for_event(fwm.conn))) {
 					fwm_handle_event(event);
@@ -120,10 +102,24 @@ int main(void) {
 }
 
 void fwm_initialize(void) {
-	/* socket_fd has to be initialized here, because fwm_connection_has_error
-	   may call fwm_exit, in which case, file descriptor 0 would be closed. */
+	fwm_initialize_files();
+
+	fwm_set_signal_handler(fwm_signal_handler);
+
 	fwm.socket_fd = -1;
 
+	fwm_initialize_x();
+
+	if (!(fwm.exec_shell = getenv("SHELL")))
+		fwm.exec_shell = FWM_EXEC_SHELL;
+
+	fwm.show_diagnostics = false;
+
+	fwm_initialize_socket();
+	fwm_initialize_poll_fds();
+}
+
+void fwm_initialize_x(void) {
 	int preferred_screen;
 	fwm.conn = xcb_connect(NULL, &preferred_screen);
 	fwm_connection_has_error();
@@ -145,10 +141,6 @@ void fwm_initialize(void) {
 		fwm_log(FWM_LOG_ERROR, "Could not register for substructure redirection. Is another window manager running?\n");
 		fwm_exit(EXIT_FAILURE);
 	}
-
-
-	if (!(fwm.exec_shell = getenv("SHELL")))
-		fwm.exec_shell = FWM_EXEC_SHELL;
 }
 
 void fwm_initialize_socket(void) {
@@ -188,29 +180,18 @@ void fwm_initialize_socket(void) {
 	}
 }
 
-char *fwm_initialize_cache(void) {
-	char *home = getenv("XDG_CACHE_HOME");
-	static char path[4096];
+void fwm_initialize_poll_fds(void) {
+	fwm.poll_fds = malloc(sizeof (struct pollfd) * (2 + FWM_MAX_CLIENTS));
+	fwm.clients = fwm.poll_fds + 2;
 
-	int ret;
-	if (home) {
-		if (home[0] == '\0') return NULL;
-		ret = snprintf(path, sizeof path, "%s/fwm", home);
-	} else {
-		home = getenv("HOME");
-		if (!home || home[0] == '\0') return NULL;
-		ret = snprintf(path, sizeof path, "%s/.cache/fwm", home);
+	fwm.poll_fds[0].fd = fwm.conn_fd;
+	fwm.poll_fds[1].fd = fwm.socket_fd;
+	fwm.poll_fds[0].events = fwm.poll_fds[1].events = POLLIN;
+
+	for (size_t i = 0; i < FWM_MAX_CLIENTS; i++) {
+		fwm.clients[i].fd = -1;
+		fwm.clients[i].events = POLLIN;
 	}
-
-	if ((ret > (int)(sizeof path - 1)) || ret < 0)
-		return NULL;
-
-	struct stat stat_buf;
-	if (stat(path, &stat_buf) == 0) return path;
-	// TODO: Create the directory's parents
-	if (mkdir(path, 0700) == -1) return NULL;
-
-	return path;
 }
 
 void fwm_set_signal_handler(void (*handler)(int)) {
@@ -252,10 +233,16 @@ void fwm_connection_has_error(void) {
 }
 
 void fwm_close_files(void) {
-	for (size_t i = 0; i < 2 + clients_num; i++)
-		close(poll_fds[i].fd);
+	if (fwm.poll_fds)
+		for (size_t i = 0; i < 2 + fwm.clients_num; i++) {
+			fwm.poll_fds[i].fd = -1;
+			close(fwm.poll_fds[i].fd);
+		}
 
-	fclose(fwm.log_file);
+	if (fwm.log_file) {
+		fclose(fwm.log_file);
+		fwm.log_file = NULL;
+	}
 }
 
 void fwm_exit(int status) {
@@ -266,8 +253,10 @@ void fwm_exit(int status) {
 
 	remove(fwm.socket_address.sun_path);
 
-	xcb_flush(fwm.conn);
-	xcb_disconnect(fwm.conn);
+	if (fwm.conn) {
+		xcb_flush(fwm.conn);
+		xcb_disconnect(fwm.conn);
+	}
 
 	exit(status);
 }

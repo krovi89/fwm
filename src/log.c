@@ -7,24 +7,6 @@
 #include "fwm.h"
 #include "log.h"
 
-FILE *fwm_initialize_log_file(char *directory) {
-	if (!directory) return NULL;
-
-	static char path[4096];
-
-	time_t current_time = time(NULL);
-	int ret = snprintf(path, sizeof path, "%s/fwm-%li.log", directory, current_time);
-	if ((ret > (int)(sizeof path - 1)) || ret < 0)
-		return NULL;
-
-	FILE *log_file = fopen(path, "w");
-	if (!log_file) {
-		return NULL;
-	}
-
-	return log_file;
-}
-
 static int fwm_log_va_list(FILE *stream,
                            const char *type, const char *type_escape,
                            const char *format_escape, const char *format,
@@ -57,8 +39,18 @@ void fwm_log(enum fwm_log_type type, const char *format, ...) {
 
 	switch (type) {
 		case FWM_LOG_INFO:
-			fwm_log_va_list(NULL, "INFO", /* bold blue */ "\033[34;1m", /* reset */ "\033[0m", format, argument_list);
+			fwm_log_va_list(stdout, "INFO", /* bold blue */ "\033[34;1m", /* reset */ "\033[0m", format, argument_list);
 			break;
+		case FWM_LOG_DIAGNOSTIC: {
+			FILE *stream;
+			if (fwm.show_diagnostics)
+				stream = stdout;
+			else
+				stream = NULL;
+
+			fwm_log_va_list(stream, "DIAGNOSTIC", /* bold magenta */ "\033[31;1m", /* reset */ "\033[0m", format, argument_list);
+			break;
+		}
 		case FWM_LOG_WARNING:
 			fwm_log_va_list(stderr, "WARNING", /* bold yellow */ "\033[33;1m", /* reset */ "\033[0m", format, argument_list);
 			break;

@@ -12,6 +12,7 @@ FWM_SRC := fwm.c      \
            actions.c  \
            keybinds.c \
            messages.c \
+	   files.c    \
            log.c
 FWM_OBJ := $(patsubst %.c,$(FWM_OBJDIR)/%.o,$(FWM_SRC))
 
@@ -38,6 +39,7 @@ $(FWM_OBJDIR)/events.o: events.c events.h fwm.h actions.h keybinds.h
 $(FWM_OBJDIR)/actions.o: actions.c actions.h fwm.h
 $(FWM_OBJDIR)/keybinds.o: keybinds.c keybinds.h fwm.h
 $(FWM_OBJDIR)/messages.o: messages.c messages.h fwm.h actions.h keybinds.h log.h
+$(FWM_OBJDIR)/files.o: files.c files.h fwm.h
 $(FWM_OBJDIR)/log.o: log.c log.h fwm.h
 $(FWM_OBJ): makefile
 
