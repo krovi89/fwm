@@ -113,6 +113,8 @@ void fwm_initialize(void) {
 
 	fwm.show_diagnostics = false;
 
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Starting fwm.\n", fwm.exec_shell);
+
 	fwm_set_signal_handler(fwm_signal_handler);
 
 	if (!(fwm.exec_shell = getenv("SHELL")))
@@ -237,7 +239,7 @@ void fwm_signal_handler(int signal) {
 	if (signal == SIGCHLD) {
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	} else {
-		fwm_log(FWM_LOG_INFO, "Signal %i received, exiting...\n", signal);
+		fwm_log(FWM_LOG_DIAGNOSTIC, "Signal %i received, exiting...\n", signal);
 		fwm_exit(EXIT_SUCCESS);
 	}
 }
@@ -278,6 +280,7 @@ void fwm_exit(int status) {
 		fwm_remove_all_keybinds();
 
 	fwm_close_files();
+
 	free(fwm.poll_fds);
 	free(fwm.client_connection_times);
 

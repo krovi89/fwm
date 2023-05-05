@@ -26,11 +26,13 @@ static int fwm_log_va_list(FILE *stream,
 		vfprintf(fwm.log_file, format, ag);
 
 		va_end(ag);
+		fflush(fwm.log_file);
 	}
 
 	if (stream) {
 		fprintf(stream, "%s%s:%s ", type_escape, type, format_escape);
 		ret = vfprintf(stream, format, arg);
+		fflush(stream);
 	}
 
 	return ret;
