@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 
 #include "files.h"
 #include "fwm.h"
+#include "log.h"
 
 void fwm_initialize_files(void) {
 	fwm.cache_dir = fwm_mkdir_cache();
@@ -14,37 +16,48 @@ void fwm_initialize_files(void) {
 	fwm_open_log_file(fwm.cache_dir, "fwm.log");
 }
 
+uint8_t fwm_is_directory(const char *directory) {
+	struct stat stat_buf;
+	if (stat(directory, &stat_buf) == -1) return false;
+	if (S_ISDIR(stat_buf.st_mode)) return true;
+	return false;
+}
+
 bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 	if (!directory || directory[0] != '/') return false;
+	if (fwm_is_directory(directory)) return true;
 
-	struct stat stat_buf;
-	if (stat(directory, &stat_buf) == 0) return true;
+	char *copy = malloc(length + 1);
+	if (!copy) return false;
 
-	char *buffer = malloc(length + 1);
-	if (!buffer) return false;
+	strcpy(copy, directory);
+	char *sep = copy;
+	char *prev_sep = sep;
 
-	strcpy(buffer, directory);
-	char *tmp = buffer;
+	while (sep) {
+		sep = strchr(sep + 1, '/');
 
-	while ((tmp = strchr(tmp + 1, '/'))) {
-		*tmp = '\0';
+		if (sep) {
+			if (sep == prev_sep + 1 ||
+			    sep == copy + length - 1) continue;
 
-		if (stat(buffer, &stat_buf) == -1)
-			if (mkdir(buffer, mode) == -1) {
-				free(buffer);
+			*sep = '\0';
+		}
+
+		if (!fwm_is_directory(copy))
+			if (mkdir(copy, mode) == -1) {
+				fwm_log(FWM_LOG_ERROR, "Failed to create directory \"%s\": %s\n", copy, strerror(errno));
+				free(copy);
 				return false;
 			}
 
-		*tmp = '/';
+		if (sep) {
+			*sep = '/';
+			prev_sep = sep;
+		}
 	}
 
-	if (stat(buffer, &stat_buf) == -1)
-		if (mkdir(buffer, mode) == -1) {
-			free(buffer);
-			return false;
-		}
-
-	free(buffer);
+	free(copy);
 	return true;
 }
 
