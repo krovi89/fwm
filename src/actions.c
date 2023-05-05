@@ -11,6 +11,7 @@
 #include "files.h"
 #include "log.h"
 
+#define FUNC_NAME "fwm_action_execute"
 void fwm_action_execute(void *args, xcb_window_t window) {
 	(void)(window);
 
@@ -24,12 +25,13 @@ void fwm_action_execute(void *args, xcb_window_t window) {
 		execvp(command[0], command);
 
 		fwm_open_log_file(NULL, NULL);
-		fwm_log(FWM_LOG_DIAGNOSTIC, "Failed to spawn \"%s\"\n", fwm.exec_shell);
+		fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Failed to spawn \"%s\"\n", FUNC_NAME, fwm.exec_shell);
 		if (fwm.log_file) fclose(fwm.log_file);
 
 		exit(EXIT_FAILURE);
 	}
 }
+#undef FUNC_NAME
 
 void fwm_action_close_focused(void *args, xcb_window_t window) {
 	(void)(args);

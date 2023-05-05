@@ -108,19 +108,20 @@ int main(void) {
 	}
 }
 
+#define FUNC_NAME "fwm_initalize"
 void fwm_initialize(void) {
+	fwm.show_diagnostics = true;
+
 	fwm_initialize_files();
 
-	fwm.show_diagnostics = false;
-
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Starting fwm.\n", fwm.exec_shell);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Initializing fwm.\n", FUNC_NAME, fwm.exec_shell);
 
 	fwm_set_signal_handler(fwm_signal_handler);
 
 	if (!(fwm.exec_shell = getenv("SHELL")))
 		fwm.exec_shell = FWM_EXEC_SHELL;
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Exec shell set to \"%s\".\n", fwm.exec_shell);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Exec shell set to \"%s\".\n", FUNC_NAME, fwm.exec_shell);
 
 	fwm.socket_fd = -1;
 
@@ -133,7 +134,9 @@ void fwm_initialize(void) {
 	fwm.current_position = NULL;
 	fwm.max_keybind_id = 0;
 }
+#undef FUNC_NAME
 
+#define FUNC_NAME fwm_initialize_x
 void fwm_initialize_x(void) {
 	int preferred_screen;
 	fwm.conn = xcb_connect(NULL, &preferred_screen);
@@ -153,14 +156,17 @@ void fwm_initialize_x(void) {
                                                                                             XCB_CW_EVENT_MASK,
                                                                                             &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error) {
-		fwm_log(FWM_LOG_ERROR, "Could not register for substructure redirection. Is another window manager running?\n");
+		fwm_log(FWM_LOG_ERROR, "%s: Could not register for substructure redirection. Is another window manager running?\n",
+		        FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 }
+#undef FUNC_NAME
 
+#define FUNC_NAME "fwm_initialize_socket"
 void fwm_initialize_socket(void) {
 	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Socket creation failed.\n");
+		fwm_log(FWM_LOG_ERROR, "%s: Socket creation failed.\n", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 
@@ -175,32 +181,34 @@ void fwm_initialize_socket(void) {
 
 	free(host_name);
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Socket path set to \"%s\".\n", fwm.socket_address.sun_path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Socket path set to \"%s\".\n", FUNC_NAME, fwm.socket_address.sun_path);
 
 	if (ret > (int)(sizeof fwm.socket_address.sun_path - 1)) {
-		fwm_log(FWM_LOG_WARNING, "Socket path is too long.\n");
+		fwm_log(FWM_LOG_WARNING, "%s: Socket path is too long.\n", FUNC_NAME);
 	} else if (ret < 0) {
-		fwm_log(FWM_LOG_ERROR, "Failed to write socket path.\n");
+		fwm_log(FWM_LOG_ERROR, "%s: Failed to write socket path.\n", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 
 	remove(fwm.socket_address.sun_path);
 
 	if (bind(fwm.socket_fd, (struct sockaddr*)(&fwm.socket_address), sizeof fwm.socket_address) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Socket binding failed.\n");
+		fwm_log(FWM_LOG_ERROR, "%s: Socket binding failed.\n", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Listening to the socket failed.\n");
+		fwm_log(FWM_LOG_ERROR, "%s: Listening to the socket failed.\n", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 }
+#undef FUNC_NAME
 
+#define FUNC_NAME fwm_initialize_poll_fds
 void fwm_initialize_poll_fds(void) {
 	fwm.poll_fds = calloc(2 + FWM_MAX_CLIENTS, sizeof (struct pollfd));
 	if (!fwm.poll_fds) {
-		fwm_log(FWM_LOG_ERROR, "Failed to allocate poll structures");
+		fwm_log(FWM_LOG_ERROR, "%s: Failed to allocate poll structures", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 
@@ -208,7 +216,9 @@ void fwm_initialize_poll_fds(void) {
 	fwm.poll_fds[1].fd = fwm.socket_fd;
 	fwm.poll_fds[0].events = fwm.poll_fds[1].events = POLLIN;
 }
+#undef FUNC_NAME
 
+#define FUNC_NAME "fwm_initialize_clients"
 void fwm_initialize_clients(void) {
 	fwm.clients = fwm.poll_fds + 2;
 	for (size_t i = 0; i < FWM_MAX_CLIENTS; i++) {
@@ -219,10 +229,11 @@ void fwm_initialize_clients(void) {
 	fwm.clients_num = 0;
 	fwm.client_connection_times = calloc(FWM_MAX_CLIENTS, sizeof (time_t));
 	if (!fwm.client_connection_times) {
-		fwm_log(FWM_LOG_ERROR, "Failed to allocate memory for client connection times");
+		fwm_log(FWM_LOG_ERROR, "%s: Failed to allocate memory for client connection times", FUNC_NAME);
 		fwm_exit(EXIT_FAILURE);
 	}
 }
+#undef FUNC_NAME
 
 void fwm_set_signal_handler(void (*handler)(int)) {
 	struct sigaction signal_action = {
@@ -235,15 +246,18 @@ void fwm_set_signal_handler(void (*handler)(int)) {
 	sigaction(SIGCHLD, &signal_action, NULL);
 }
 
+#define FUNC_NAME "fwm_signal_handler"
 void fwm_signal_handler(int signal) {
 	if (signal == SIGCHLD) {
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	} else {
-		fwm_log(FWM_LOG_DIAGNOSTIC, "Signal %i received, exiting...\n", signal);
+		fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Signal %i received.\n", FUNC_NAME, signal);
 		fwm_exit(EXIT_SUCCESS);
 	}
 }
+#undef FUNC_NAME
 
+#define FUNC_NAME "fwm_connection_has_error"
 void fwm_connection_has_error(void) {
 	int error_code = xcb_connection_has_error(fwm.conn);
 	if (error_code) {
@@ -257,10 +271,12 @@ void fwm_connection_has_error(void) {
 			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "File descriptor passing failed",
 		};
 
-		fwm_log(FWM_LOG_ERROR, "Connecting to the X server failed: %s (%u).\n", error_strings[error_code], error_code);
+		fwm_log(FWM_LOG_ERROR, "%s: Connecting to the X server failed: %s (%u).\n",
+		        FUNC_NAME, error_strings[error_code], error_code);
 		fwm_exit(error_code);
 	}
 }
+#undef FUNC_NAME
 
 void fwm_close_files(void) {
 	if (fwm.poll_fds)
@@ -275,7 +291,10 @@ void fwm_close_files(void) {
 	}
 }
 
+#define FUNC_NAME "fwm_exit"
 void fwm_exit(int status) {
+	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Exiting fwm.\n", FUNC_NAME);
+
 	if (fwm.keybinds)
 		fwm_remove_all_keybinds();
 
@@ -293,3 +312,4 @@ void fwm_exit(int status) {
 
 	exit(status);
 }
+#undef FUNC_NAME
