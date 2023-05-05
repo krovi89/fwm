@@ -22,7 +22,6 @@ uint8_t fwm_is_directory(const char *directory) {
 	return false;
 }
 
-#define FUNC_NAME "fwm_mkdir"
 bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 	if (!directory || directory[0] != '/') return false;
 	if (fwm_is_directory(directory)) return true;
@@ -46,7 +45,8 @@ bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 
 		if (!fwm_is_directory(copy))
 			if (mkdir(copy, mode) == -1) {
-				fwm_log(FWM_LOG_ERROR, "%s: Failed to create directory \"%s\": %s\n", FUNC_NAME, copy, strerror(errno));
+				fwm_log(FWM_LOG_ERROR, "Failed to create directory \"%s\": %s\n",
+				        copy, strerror(errno));
 				free(copy);
 				return false;
 			}
@@ -60,9 +60,7 @@ bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 	free(copy);
 	return true;
 }
-#undef FUNC_NAME
 
-#define FUNC_NAME "fwm_mkdir_cache"
 char *fwm_mkdir_cache(void) {
 	char *home = getenv("XDG_CACHE_HOME");
 	static char path[4096];
@@ -82,12 +80,11 @@ char *fwm_mkdir_cache(void) {
 
 	if (!fwm_mkdir(path, 0700, ret)) return NULL;
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Created cache directory \"%s\".\n", FUNC_NAME, path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Created cache directory \"%s\".\n",
+	        path);
 	return path;
 }
-#undef FUNC_NAME
 
-#define FUNC_NAME "fwm_open_log_file"
 void fwm_open_log_file(const char *directory, char *file_name) {
 	static char path[4096];
 
@@ -106,11 +103,12 @@ void fwm_open_log_file(const char *directory, char *file_name) {
 
 	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
-		fwm_log(FWM_LOG_ERROR, "%s: Failed to open file \"%s\": %s\n", FUNC_NAME, path, strerror(errno));
+		fwm_log(FWM_LOG_ERROR, "Failed to open file \"%s\": %s\n",
+		        path, strerror(errno));
 		return;
 	}
 
 	fwm.log_file = log_file;
-	fwm_log(FWM_LOG_DIAGNOSTIC, "%s: Opened log file \"%s\".\n", FUNC_NAME, path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Opened log file \"%s\".\n",
+	        path);
 }
-#undef FUNC_NAME
