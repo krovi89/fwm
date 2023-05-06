@@ -113,7 +113,7 @@ void fwm_free_keybind(struct fwm_keybind *keybind, bool keep_siblings) {
 
 	while (keybind->actions) {
 		struct fwm_action *temp = keybind->actions->next;
-		free(keybind->actions);
+		keybind->actions->free(keybind->actions);
 		keybind->actions = temp;
 	}
 

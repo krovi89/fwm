@@ -45,8 +45,7 @@ bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 
 		if (!fwm_is_directory(copy))
 			if (mkdir(copy, mode) == -1) {
-				fwm_log(FWM_LOG_ERROR, "Failed to create directory \"%s\": %s\n",
-				        copy, strerror(errno));
+				fwm_log(FWM_LOG_ERROR, "Failed to create directory \"%s\": %s\n", copy, strerror(errno));
 				free(copy);
 				return false;
 			}
@@ -80,8 +79,7 @@ char *fwm_mkdir_cache(void) {
 
 	if (!fwm_mkdir(path, 0700, ret)) return NULL;
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Created cache directory \"%s\".\n",
-	        path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Created cache directory \"%s\".\n", path);
 	return path;
 }
 
@@ -103,12 +101,10 @@ void fwm_open_log_file(const char *directory, char *file_name) {
 
 	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
-		fwm_log(FWM_LOG_ERROR, "Failed to open file \"%s\": %s\n",
-		        path, strerror(errno));
+		fwm_log(FWM_LOG_ERROR, "Failed to open file \"%s\": %s\n", path, strerror(errno));
 		return;
 	}
 
 	fwm.log_file = log_file;
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Opened log file \"%s\".\n",
-	        path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Opened log file \"%s\".\n", path);
 }

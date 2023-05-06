@@ -173,6 +173,7 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
 // TODO: Write a proper damn actions parser
 struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions) {
 	struct fwm_action *action = NULL;
+
 	for (int i = 0; i < actions_num; i++) {
 		uint8_t action_type = *actions++;
 
@@ -185,8 +186,10 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 
 		switch (action_type) {
 		 	case FWM_ACTION_CLOSE_FOCUSED:
-		 		action->run = fwm_action_close_focused;
+		 		action->run = fwm_run_action_execute;
+				action->free = fwm_free_action_close_focused;
 				action->args = NULL;
+
 		 		break;
 			case FWM_ACTION_EXECUTE: {
 				size_t command_length;
@@ -203,10 +206,13 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 				}
 
 				memcpy(args->command, actions, command_length);
-				action->run = fwm_action_execute;
-				action->args = args;
-			}
 
+				action->run = fwm_run_action_execute;
+				action->free = fwm_free_action_execute;
+				action->args = args;
+
+				break;
+			}
 		 	default:
 		 		break;
 		}

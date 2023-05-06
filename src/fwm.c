@@ -39,7 +39,7 @@ int main(void) {
 				/* clean up clients */
 				if (client_has_error || client_timed_out) {
 					if (client_has_error)
-						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Poll error %i.\n", i, fwm.clients[i].revents);
+						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Poll error.\n", i);
 					else if (client_timed_out)
 						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Timed out.\n", i);
 
