@@ -44,8 +44,13 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 }
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length) {
+	if (length < 2) {
+		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
+	}
+
 	uint8_t parents_num = *message++;
 	uint8_t actions_num = *message++;
+	length -= 2;
 
 	const uint8_t *parents = message;
 	if (!fwm_validate_keybind(parents_num, parents, length)) {
@@ -109,7 +114,7 @@ uint8_t fwm_handle_request_remove_keybind(size_t id) {
 }
 
 void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int length) {
-	if (length < (int)(sizeof (uint8_t))) {
+	if (length < 1) {
 		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
 		return;
 	}
@@ -238,9 +243,10 @@ bool fwm_validate_actions(uint8_t actions_num, const uint8_t *actions,
 				size_t command_length;
 				memcpy(&command_length, actions, sizeof (size_t));
 
+				length -= sizeof (size_t);
+
 				if (length < (int)(command_length)) return false;
 
-				length -= sizeof (size_t);
 				actions += sizeof (size_t);
 
 				break;
