@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <sys/socket.h>
+#include <xcb/xproto.h>
 
 #include "messages.h"
 #include "fwm.h"
@@ -47,8 +48,20 @@ void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int le
 	uint8_t actions_num = *message++;
 
 	const uint8_t *parents = message;
+	if (!fwm_validate_keybind(parents_num, parents, length)) {
+		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
+		return;
+	}
+
+	length -= (sizeof (uint16_t) + 1) * (parents_num + 1);
 	message += (sizeof (uint16_t) + 1) * (parents_num + 1);
+
 	const uint8_t *actions = message;
+
+	if (!fwm_validate_actions(actions_num, actions, length)) {
+		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
+		return;
+	}
 
 	size_t id = 0;
 	uint8_t response = fwm_handle_request_add_keybind(parents_num, actions_num,
@@ -75,6 +88,10 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
+	if (length < (int)(sizeof (size_t))) {
+		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
+	}
+
 	size_t id;
 	memcpy(&id, message, sizeof (size_t));
 
@@ -92,6 +109,11 @@ uint8_t fwm_handle_request_remove_keybind(size_t id) {
 }
 
 void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int length) {
+	if (length < (int)(sizeof (uint8_t))) {
+		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
+		return;
+	}
+
 	uint8_t parents_num = *message++;
 
 	const uint8_t *parents = message;
@@ -141,6 +163,30 @@ void fwm_compose_send_response(int client_fd, uint8_t response_type, void *detai
 	send(client_fd, message, message_length, MSG_NOSIGNAL);
 }
 
+bool fwm_validate_keybind(uint8_t parents_num, const uint8_t *parents,
+                          int length) {
+	if (length < (int)((sizeof (uint16_t) + 1) * (parents_num + 1)))
+		return false;
+
+	for (uint8_t i = 0; i < parents_num + 1; i++) {
+		uint16_t keymask;
+		memcpy(&keymask, parents, sizeof (uint16_t));
+
+		if ((keymask & ~33023) != 0)
+			return false;
+
+		length -= sizeof (uint16_t);
+		parents += sizeof (uint16_t);
+
+		uint8_t keycode = *parents++;
+
+		if (keycode < 8)
+			return false;
+	}
+
+	return true;
+}
+
 struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parents,
                                       struct fwm_keybind **keybind, bool assign_id) {
 	struct fwm_keybind *base = NULL, *tree = NULL;
@@ -170,6 +216,42 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
 	return base;
 }
 
+bool fwm_validate_actions(uint8_t actions_num, const uint8_t *actions,
+                          int length) {
+	if (length < actions_num) return false;
+
+	for (uint8_t i = 0; i < actions_num; i++) {
+		uint8_t action_type = *actions++;
+		length--;
+
+		switch (action_type) {
+			case FWM_ACTION_CLOSE_FOCUSED:
+				if (length < 1) return false;
+
+				length--;
+				actions++;
+
+				break;
+			case FWM_ACTION_EXECUTE:
+				if (length < (int)(sizeof (size_t))) return false;
+
+				size_t command_length;
+				memcpy(&command_length, actions, sizeof (size_t));
+
+				if (length < (int)(command_length)) return false;
+
+				length -= sizeof (size_t);
+				actions += sizeof (size_t);
+
+				break;
+			default:
+				return false;
+		}
+	}
+
+	return true;
+}
+
 // TODO: Write a proper damn actions parser
 struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions) {
 	struct fwm_action *action = NULL;
@@ -191,6 +273,7 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 				action->args = NULL;
 
 		 		break;
+
 			case FWM_ACTION_EXECUTE: {
 				size_t command_length;
 				memcpy(&command_length, actions, sizeof command_length);
@@ -213,8 +296,6 @@ struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions)
 
 				break;
 			}
-		 	default:
-		 		break;
 		}
 	}
 

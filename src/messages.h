@@ -43,8 +43,13 @@ uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *pa
 
 void fwm_compose_send_response(int client_fd, uint8_t type, void *details);
 
+bool fwm_validate_keybind(uint8_t parents_num, const uint8_t *parents,
+                          int length);
 struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parents,
                                       struct fwm_keybind **keybind, bool assign_id);
+
+bool fwm_validate_actions(uint8_t actions_num, const uint8_t *actions,
+                          int length);
 struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions);
 
 #endif
