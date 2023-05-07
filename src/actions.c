@@ -5,8 +5,6 @@
 
 #include "actions.h"
 #include "fwm.h"
-#include "files.h"
-#include "log.h"
 
 #include "actions/close_focused.h"
 #include "actions/execute.h"
