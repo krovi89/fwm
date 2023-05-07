@@ -7,15 +7,13 @@
 #define FWM_ACTION_EXECUTE 2
 #define FWM_MAX_ACTION 2
 
-struct fwm_action {
-	void (*run)(void*, xcb_window_t);
-	void (*free)(struct fwm_action*);
-	void *args;
-	struct fwm_action *next;
-};
+struct fwm_action_arguments;
 
-struct fwm_action_execute_args {
-	char *command;
+struct fwm_action {
+	void (*run)(struct fwm_action_arguments*, xcb_window_t);
+	void (*free)(struct fwm_action*);
+	struct fwm_action_arguments *arguments;
+	struct fwm_action *next;
 };
 
 void fwm_initialize_actions(void);

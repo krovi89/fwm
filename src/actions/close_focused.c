@@ -6,28 +6,6 @@
 #include "close_focused.h"
 #include "../fwm.h"
 
-struct fwm_action *fwm_parse_action_close_focused(const uint8_t *actions) {
-	(void)(actions);
-
-	struct fwm_action *action = calloc(1, sizeof (struct fwm_action));
-	if (!action) return NULL;
-
-	action->run = fwm_run_action_close_focused;
-	action->free = fwm_free_action_close_focused;
-
-	return action;
-}
-
-void fwm_run_action_close_focused(void *args, xcb_window_t window) {
-	(void)(args);
-
-	xcb_kill_client(fwm.conn, window);
-}
-
-void fwm_free_action_close_focused(struct fwm_action *action) {
-	free(action);
-}
-
 bool fwm_validate_action_close_focused(const uint8_t **action_ptr, int *length_ptr) {
 	const uint8_t *action = *action_ptr;
 	int length = *length_ptr;
@@ -41,4 +19,26 @@ bool fwm_validate_action_close_focused(const uint8_t **action_ptr, int *length_p
 	*length_ptr = length;
 
 	return true;
+}
+
+struct fwm_action *fwm_parse_action_close_focused(const uint8_t *actions) {
+	(void)(actions);
+
+	struct fwm_action *action = calloc(1, sizeof (struct fwm_action));
+	if (!action) return NULL;
+
+	action->run = fwm_run_action_close_focused;
+	action->free = fwm_free_action_close_focused;
+
+	return action;
+}
+
+void fwm_run_action_close_focused(struct fwm_action_arguments *arguments, xcb_window_t window) {
+	(void)(arguments);
+
+	xcb_kill_client(fwm.conn, window);
+}
+
+void fwm_free_action_close_focused(struct fwm_action *action) {
+	free(action);
 }
