@@ -44,35 +44,34 @@ void fwm_handle_request(int client_fd, uint8_t type, const uint8_t *message, int
 }
 
 void fwm_parse_request_add_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < 2) {
-		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
-	}
+	uint8_t response = FWM_FAILURE_INVALID_REQUEST;
+	void *details = NULL;
+
+	if (length < 2) goto response;
 
 	uint8_t parents_num = *message++;
 	uint8_t actions_num = *message++;
 	length -= 2;
 
 	const uint8_t *parents = message;
-	if (!fwm_validate_keybind(parents_num, parents, length)) {
-		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
-		return;
-	}
+	if (!fwm_validate_keybind(parents_num, parents, length))
+		goto response;
 
 	length -= (sizeof (uint16_t) + 1) * (parents_num + 1);
 	message += (sizeof (uint16_t) + 1) * (parents_num + 1);
 
 	const uint8_t *actions = message;
 
-	if (!fwm_validate_actions(actions_num, actions, length)) {
-		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
-		return;
-	}
+	if (!fwm_validate_actions(actions_num, actions, length))
+		goto response;
 
 	size_t id = 0;
-	uint8_t response = fwm_handle_request_add_keybind(parents_num, actions_num,
-	                                                  parents, actions, &id);
+	response = fwm_handle_request_add_keybind(parents_num, actions_num,
+	                                          parents, actions, &id);
+	details = &id;
 
-	fwm_compose_send_response(client_fd, response, &id);
+response:
+	fwm_compose_send_response(client_fd, response, details);
 }
 
 uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
@@ -95,14 +94,17 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 }
 
 void fwm_parse_request_remove_keybind(int client_fd, const uint8_t *message, int length) {
-	if (length < (int)(sizeof (size_t))) {
-		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
-	}
+	uint8_t response = FWM_FAILURE_INVALID_REQUEST;
+
+	if (length < (int)(sizeof (size_t)))
+		goto response;
 
 	size_t id;
 	memcpy(&id, message, sizeof (size_t));
 
-	uint8_t response = fwm_handle_request_remove_keybind(id);
+	response = fwm_handle_request_remove_keybind(id);
+
+response:
 	fwm_compose_send_response(client_fd, response, NULL);
 }
 
@@ -116,20 +118,21 @@ uint8_t fwm_handle_request_remove_keybind(size_t id) {
 }
 
 void fwm_parse_request_get_keybind_id(int client_fd, const uint8_t *message, int length) {
-	if (length < 1) {
-		fwm_compose_send_response(client_fd, FWM_FAILURE_INVALID_REQUEST, NULL);
-		return;
-	}
+	uint8_t response = FWM_FAILURE_INVALID_REQUEST;
+	void *details = NULL;
+
+	if (length < 1) goto response;
 
 	uint8_t parents_num = *message++;
-
 	const uint8_t *parents = message;
 
 	size_t id = 0;
-	uint8_t response = fwm_handle_request_get_keybind_id(parents_num, parents,
+	response = fwm_handle_request_get_keybind_id(parents_num, parents,
 	                                                     &id);
+	details = &id;
 
-	fwm_compose_send_response(client_fd, response, &id);
+response:
+	fwm_compose_send_response(client_fd, response, details);
 }
 
 uint8_t fwm_handle_request_get_keybind_id(uint8_t parents_num, const uint8_t *parents,

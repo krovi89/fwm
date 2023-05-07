@@ -28,7 +28,7 @@ struct fwm fwm;
 int main(void) {
 	fwm_initialize();
 
-	static uint8_t message[FWM_MAX_MESSAGE_LEN];
+	uint8_t message[FWM_MAX_MESSAGE_LEN];
 	for (;;) {
 		if (poll(fwm.poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (size_t i = 0; i < fwm.clients_num; i++) {
