@@ -5,6 +5,7 @@
 
 #include "keybinds.h"
 #include "fwm.h"
+#include "actions.h"
 
 bool fwm_assimilate_keybind(struct fwm_keybind *new) {
 	if (!fwm.keybinds) {
@@ -111,12 +112,7 @@ void fwm_free_keybind(struct fwm_keybind *keybind, bool keep_siblings) {
 	if (!keep_siblings && keybind->next)
 		fwm_free_keybind(keybind->next, false);
 
-	while (keybind->actions) {
-		struct fwm_action *temp = keybind->actions->next;
-		keybind->actions->free(keybind->actions);
-		keybind->actions = temp;
-	}
-
+	fwm_free_actions(keybind->actions);
 	free(keybind);
 }
 

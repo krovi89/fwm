@@ -12,7 +12,7 @@
 #include "keybinds.h"
 #include "log.h"
 
-// TODO: message validation
+#include "actions/execute.h"
 
 const uint8_t message_header[3] = { 'f', 'w', 'm' };
 
@@ -83,7 +83,9 @@ uint8_t fwm_handle_request_add_keybind(uint8_t parents_num, uint8_t actions_num,
 	                                             &keybind, true);
 	if (!tree) return FWM_FAILURE_KEYBIND_ALLOC;
 
-	keybind->actions = fwm_parse_action(actions_num, actions);
+	keybind->actions = fwm_parse_actions(actions_num, actions);
+	if (!keybind->actions)
+		return FWM_FAILURE_ACTION_ALLOC;
 
 	if (!fwm_assimilate_keybind(tree))
 		return FWM_FAILURE_KEYBIND_ALREADY_EXISTS;
@@ -229,81 +231,36 @@ bool fwm_validate_actions(uint8_t actions_num, const uint8_t *actions,
 		uint8_t action_type = *actions++;
 		length--;
 
-		switch (action_type) {
-			case FWM_ACTION_CLOSE_FOCUSED:
-				if (length < 1) return false;
+		if (action_type > FWM_MAX_ACTION)
+			return false;
 
-				length--;
-				actions++;
-
-				break;
-			case FWM_ACTION_EXECUTE:
-				if (length < (int)(sizeof (size_t))) return false;
-
-				size_t command_length;
-				memcpy(&command_length, actions, sizeof (size_t));
-
-				length -= sizeof (size_t);
-
-				if (length < (int)(command_length)) return false;
-
-				actions += sizeof (size_t);
-
-				break;
-			default:
-				return false;
-		}
+		if (!fwm.action_validators[action_type](&actions, &length))
+			return false;
 	}
 
 	return true;
 }
 
-// TODO: Write a proper damn actions parser
-struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions) {
-	struct fwm_action *action = NULL;
+struct fwm_action *fwm_parse_actions(uint8_t actions_num, const uint8_t *actions) {
+	struct fwm_action *head, *current_action = NULL;
 
 	for (int i = 0; i < actions_num; i++) {
 		uint8_t action_type = *actions++;
 
+		struct fwm_action *action = fwm.action_parsers[action_type](actions);
 		if (!action) {
-			action = calloc(1, sizeof (struct fwm_action));
-		} else {
-			action->next = calloc(1, sizeof (struct fwm_action));
-			action = action->next;
+			fwm_free_actions(head);
+			return NULL;
 		}
 
-		switch (action_type) {
-		 	case FWM_ACTION_CLOSE_FOCUSED:
-		 		action->run = fwm_run_action_execute;
-				action->free = fwm_free_action_close_focused;
-				action->args = NULL;
-
-		 		break;
-
-			case FWM_ACTION_EXECUTE: {
-				size_t command_length;
-				memcpy(&command_length, actions, sizeof command_length);
-				actions += sizeof (size_t);
-
-				struct fwm_action_execute_args *args = calloc(1, sizeof (struct fwm_action_execute_args));
-
-				if (actions[command_length - 1] != '\0') { // for non-null-terminated strings
-					args->command = malloc(command_length + 1);
-					args->command[command_length] = '\0';
-				} else {
-					args->command = malloc(command_length);
-				}
-
-				memcpy(args->command, actions, command_length);
-
-				action->run = fwm_run_action_execute;
-				action->free = fwm_free_action_execute;
-				action->args = args;
-
-				break;
-			}
+		if (!current_action) {
+			current_action = action;
+			head = current_action;
+		} else {
+			current_action->next = action;
+			current_action = current_action->next;
 		}
 	}
 
-	return action;
+	return current_action;
 }

@@ -11,6 +11,7 @@
 
 #include "events.h"
 #include "keybinds.h"
+#include "actions.h"
 
 #define FWM_MAX_MESSAGE_LEN 255
 
@@ -46,6 +47,10 @@ struct fwm {
 	struct fwm_keybind *keybinds;
 	struct fwm_keybind *current_position;
 	size_t              max_keybind_id;
+
+	/* array of action parsers */
+	struct fwm_action *(*action_parsers[FWM_MAX_ACTION + 1])(const uint8_t*);
+	bool (*action_validators[FWM_MAX_ACTION + 1])(const uint8_t **action, int *length);
 
 	char *cache_dir;
 	FILE *log_file;

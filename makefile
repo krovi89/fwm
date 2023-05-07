@@ -7,16 +7,19 @@ FWM_OBJDIR ?= obj
 FWM_OUTDIR ?= out
 
 FWM_OUT := fwm
-FWM_SRC := fwm.c      \
-           events.c   \
-           actions.c  \
-           keybinds.c \
-           messages.c \
-	   files.c    \
-           log.c
+FWM_SRC := fwm.c           \
+           events.c        \
+           actions.c       \
+           keybinds.c      \
+           messages.c      \
+	   files.c         \
+           log.c           \
+           execute.c       \
+           close_focused.c
 FWM_OBJ := $(patsubst %.c,$(FWM_OBJDIR)/%.o,$(FWM_SRC))
 
 VPATH := $(FWM_SRCDIR)
+VPATH += $(FWM_SRCDIR)/actions
 
 all: prepare $(FWM_OUTDIR)/$(FWM_OUT)
 

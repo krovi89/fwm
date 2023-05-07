@@ -18,6 +18,7 @@
 #define FWM_SUCCESS_KEYBIND_REMOVED_ALL 3
 #define FWM_SUCCESS_KEYBIND_FOUND 4
 
+#define FWM_FAILURE_ACTION_ALLOC 249
 #define FWM_FAILURE_KEYBIND_ALREADY_EXISTS 250
 #define FWM_FAILURE_KEYBIND_INVALID_ID 251
 #define FWM_FAILURE_KEYBIND_NOT_FOUND 252
@@ -50,6 +51,6 @@ struct fwm_keybind *fwm_parse_keybind(uint8_t parents_num, const uint8_t *parent
 
 bool fwm_validate_actions(uint8_t actions_num, const uint8_t *actions,
                           int length);
-struct fwm_action *fwm_parse_action(uint8_t actions_num, const uint8_t *actions);
+struct fwm_action *fwm_parse_actions(uint8_t actions_num, const uint8_t *actions);
 
 #endif

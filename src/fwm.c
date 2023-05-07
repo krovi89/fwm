@@ -19,6 +19,7 @@
 #include "events.h"
 #include "keybinds.h"
 #include "messages.h"
+#include "actions.h"
 #include "files.h"
 #include "log.h"
 
@@ -27,7 +28,7 @@ struct fwm fwm;
 int main(void) {
 	fwm_initialize();
 
-	uint8_t message[FWM_MAX_MESSAGE_LEN];
+	static uint8_t message[FWM_MAX_MESSAGE_LEN];
 	for (;;) {
 		if (poll(fwm.poll_fds, 2 + FWM_MAX_CLIENTS, -1) > 0) {
 			for (size_t i = 0; i < fwm.clients_num; i++) {
@@ -132,6 +133,9 @@ void fwm_initialize(void) {
 	fwm.keybinds = NULL;
 	fwm.current_position = NULL;
 	fwm.max_keybind_id = 0;
+
+	fwm_initialize_actions();
+	fwm_initialize_action_validators();
 }
 
 void fwm_initialize_x(void) {
