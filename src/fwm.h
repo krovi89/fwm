@@ -52,7 +52,7 @@ struct fwm {
 	struct fwm_action *(*action_parsers[FWM_MAX_ACTION + 1])(const uint8_t*);
 	bool (*action_validators[FWM_MAX_ACTION + 1])(const uint8_t **action, int *length);
 
-	char *cache_dir;
+	char *data_dir;
 	FILE *log_file;
 };
 

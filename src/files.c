@@ -11,8 +11,8 @@
 #include "log.h"
 
 void fwm_initialize_files(void) {
-	fwm.cache_dir = fwm_mkdir_cache();
-	fwm_open_log_file(fwm.cache_dir, "fwm.log");
+	fwm.data_dir = fwm_mkdir_data();
+	fwm_open_log_file(fwm.data_dir, "fwm.log");
 }
 
 uint8_t fwm_is_directory(const char *directory) {
@@ -60,18 +60,18 @@ bool fwm_mkdir(const char *directory, unsigned int mode, int length) {
 	return true;
 }
 
-char *fwm_mkdir_cache(void) {
-	char *home = getenv("XDG_CACHE_HOME");
+char *fwm_mkdir_data(void) {
+	char *env = getenv("XDG_DATA_HOME");
 	static char path[4096];
 
 	int ret;
-	if (home) {
-		if (home[0] == '\0') return NULL;
-		ret = snprintf(path, sizeof path, "%s/fwm", home);
+	if (env) {
+		if (env[0] == '\0') return NULL;
+		ret = snprintf(path, sizeof path, "%s/fwm", env);
 	} else {
-		home = getenv("HOME");
-		if (!home || home[0] == '\0') return NULL;
-		ret = snprintf(path, sizeof path, "%s/.cache/fwm", home);
+		env = getenv("HOME");
+		if (!env || env[0] == '\0') return NULL;
+		ret = snprintf(path, sizeof path, "%s/.local/share/fwm", env);
 	}
 
 	if ((ret > (int)(sizeof path - 1)) || ret < 0)
@@ -79,7 +79,7 @@ char *fwm_mkdir_cache(void) {
 
 	if (!fwm_mkdir(path, 0700, ret)) return NULL;
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Created cache directory \"%s\".\n", path);
+	fwm_log(FWM_LOG_DIAGNOSTIC, "Created data directory \"%s\".\n", path);
 	return path;
 }
 

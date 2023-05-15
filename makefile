@@ -52,7 +52,7 @@ $(FWM_OBJDIR)/actions.o: actions.c actions.h fwm.h close_focused.h execute.h
 $(FWM_OBJDIR)/files.o: files.c files.h fwm.h
 $(FWM_OBJDIR)/log.o: log.c log.h fwm.h
 
-$(FWM_ACTIONS_OBJDIR)/close_focused.o: close_focused.c close_focused.h fwm.h
+$(FWM_ACTIONS_OBJDIR)/close_focused.o: close_focused.c close_focused.h fwm.h actions.h
 $(FWM_ACTIONS_OBJDIR)/execute.o: execute.c execute.h fwm.h actions.h files.h log.h
 
 $(FWM_OBJ): makefile
