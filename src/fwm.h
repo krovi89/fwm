@@ -12,6 +12,7 @@
 #include "events.h"
 #include "keybinds.h"
 #include "actions.h"
+#include "files.h"
 
 #define FWM_MAX_MESSAGE_LEN 255
 
@@ -22,6 +23,17 @@
                             XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
 
 #define FWM_EXEC_SHELL "/bin/sh"
+
+struct fwm_env {
+	char *home;
+	char *xdg_data_home;
+
+	char *data_dir;
+	char *log_file_path;
+
+	char *shell;
+	char *exec_shell;
+};
 
 /* holds the window manager's state */
 struct fwm {
@@ -52,13 +64,14 @@ struct fwm {
 	struct fwm_action *(*action_parsers[FWM_MAX_ACTION + 1])(const uint8_t*);
 	bool (*action_validators[FWM_MAX_ACTION + 1])(const uint8_t **action, int *length);
 
-	char *data_dir;
-	FILE *log_file;
+	struct fwm_env env;
+	struct fwm_files files;
 };
 
 extern struct fwm fwm;
 
 void fwm_initialize(void);
+void fwm_initialize_env(void);
 void fwm_initialize_x(void);
 void fwm_initialize_socket(void);
 void fwm_initialize_poll_fds(void);

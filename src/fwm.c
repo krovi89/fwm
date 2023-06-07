@@ -112,14 +112,21 @@ int main(void) {
 void fwm_initialize(void) {
 	fwm.show_diagnostics = false;
 
+	fwm_initialize_env();
 	fwm_initialize_files();
 
 	fwm_log(FWM_LOG_DIAGNOSTIC, "Initializing fwm.\n", fwm.exec_shell);
 
 	fwm_set_signal_handler(fwm_signal_handler);
 
-	if (!(fwm.exec_shell = getenv("SHELL")))
-		fwm.exec_shell = FWM_EXEC_SHELL;
+	if (fwm.env.exec_shell) {
+		fwm.exec_shell = fwm.env.exec_shell;
+	} else {
+		if (fwm.env.shell)
+			fwm.exec_shell = fwm.env.shell;
+		else
+			fwm.exec_shell = FWM_EXEC_SHELL;
+	}
 
 	fwm_log(FWM_LOG_DIAGNOSTIC, "Exec shell set to \"%s\".\n", fwm.exec_shell);
 
@@ -136,6 +143,15 @@ void fwm_initialize(void) {
 
 	fwm_initialize_actions();
 	fwm_initialize_action_validators();
+}
+
+void fwm_initialize_env(void) {
+	fwm.env.home = getenv("HOME");
+	fwm.env.xdg_data_home = getenv("XDG_DATA_HOME");
+	fwm.env.data_dir = getenv("FWM_DATA_DIR");
+	fwm.env.log_file_path = getenv("FWM_LOG_FILE");
+	fwm.env.shell = getenv("SHELL");
+	fwm.env.exec_shell = getenv("FWM_EXEC_SHELL");
 }
 
 void fwm_initialize_x(void) {
@@ -269,13 +285,13 @@ void fwm_connection_has_error(void) {
 void fwm_close_files(void) {
 	if (fwm.poll_fds)
 		for (size_t i = 0; i < 2 + fwm.clients_num; i++) {
-			fwm.poll_fds[i].fd = -1;
 			close(fwm.poll_fds[i].fd);
+			fwm.poll_fds[i].fd = -1;
 		}
 
-	if (fwm.log_file) {
-		fclose(fwm.log_file);
-		fwm.log_file = NULL;
+	if (fwm.files.log_file) {
+		fclose(fwm.files.log_file);
+		fwm.files.log_file = NULL;
 	}
 }
 

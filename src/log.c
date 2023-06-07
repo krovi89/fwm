@@ -16,17 +16,17 @@ static int fwm_log_va_list(FILE *stream,
 
 	struct tm *tm = localtime(&(time_t){ time(NULL) });
 
-	if (fwm.log_file) {
+	if (fwm.files.log_file) {
 		va_list ag;
 		va_copy(ag, arg);
 
-		fprintf(fwm.log_file, "[%i/%02i/%02i %02i:%02i:%02i] %s: ", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-		                                                            tm->tm_hour, tm->tm_min, tm->tm_sec,
-		                                                            type);
-		vfprintf(fwm.log_file, format, ag);
+		fprintf(fwm.files.log_file, "[%i/%02i/%02i %02i:%02i:%02i] %s: ", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+		                                                                  tm->tm_hour, tm->tm_min, tm->tm_sec,
+		                                                                  type);
+		vfprintf(fwm.files.log_file, format, ag);
 
 		va_end(ag);
-		fflush(fwm.log_file);
+		fflush(fwm.files.log_file);
 	}
 
 	if (stream) {
