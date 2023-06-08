@@ -11,7 +11,7 @@
 #include "log.h"
 
 static uint8_t fwm_is_dir(const char *path);
-static bool fwm_mkdir(const char *dir, unsigned int mode, int dirlen);
+static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen);
 
 void fwm_initialize_files(void) {
 	static char data_dir_buf[4096];
@@ -46,7 +46,7 @@ static uint8_t fwm_is_dir(const char *path) {
 	return false;
 }
 
-static bool fwm_mkdir(const char *dir, unsigned int mode, int dirlen) {
+static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen) {
 	if (!dir || dir[0] == '\0') return false;
 	if (fwm_is_dir(dir)) return true;
 
@@ -57,12 +57,13 @@ static bool fwm_mkdir(const char *dir, unsigned int mode, int dirlen) {
 	char *sep = copy;
 	char *prev_sep = sep;
 
-	while (1) {
+	while (sep) {
 		sep = strchr(sep + 1, '/');
 
 		if (sep) {
 			if (sep == prev_sep + 1 ||
-			    sep == copy + dirlen - 1) continue;
+				// last character before null terminator
+				sep == copy + dirlen - 2) continue;
 
 			*sep = '\0';
 		}
@@ -77,7 +78,7 @@ static bool fwm_mkdir(const char *dir, unsigned int mode, int dirlen) {
 		if (sep) {
 			*sep = '/';
 			prev_sep = sep;
-		} else break;
+		}
 	}
 
 	free(copy);
