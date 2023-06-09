@@ -40,9 +40,9 @@ int main(void) {
 				/* clean up clients */
 				if (client_has_error || client_timed_out) {
 					if (client_has_error)
-						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Poll error.\n", i);
+						FWM_DLOG("Removing client %zu: Poll error.\n", i);
 					else if (client_timed_out)
-						fwm_log(FWM_LOG_DIAGNOSTIC, "Removing client %zu: Timed out.\n", i);
+						FWM_DLOG("Removing client %zu: Timed out.\n", i);
 
 					close(fwm.clients[i].fd);
 
@@ -59,7 +59,7 @@ int main(void) {
 				/* Read messages from valid clients */
 				if (fwm.clients[i].revents & POLLIN) {
 					int message_length = recv(fwm.clients[i].fd, message, sizeof message, 0);
-					fwm_log(FWM_LOG_DIAGNOSTIC, "Received message of length %i from client %zu.\n", message_length, i);
+					FWM_DLOG("Received message of length %i from client %zu.\n", message_length, i);
 
 					/* The message must at least contain the header, and a request number.
 					   Otherwise, it's not valid */
@@ -70,7 +70,7 @@ int main(void) {
 					uint8_t request_type = *(message + sizeof message_header);
 					const uint8_t *request_message = message + (sizeof message_header + 1);
 
-					fwm_log(FWM_LOG_DIAGNOSTIC, "Request type: %u.\n", request_type);
+					FWM_DLOG("Request type: %u.\n", request_type);
 
 					fwm_handle_request(fwm.clients[i].fd, request_type, request_message, request_length);
 
@@ -83,12 +83,11 @@ int main(void) {
 			if (fwm.poll_fds[1].revents & POLLIN) {
 				if (fwm.clients_num == FWM_MAX_CLIENTS) {
 					close(accept(fwm.socket_fd, NULL, 0));
-					fwm_log(FWM_LOG_ERROR, "Rejected client: Maximum number of clients already connected");
-
+					FWM_ELOG("Rejected client: Maximum number of clients already connected");
 					continue;
 				}
 
-				fwm_log(FWM_LOG_DIAGNOSTIC, "Adding client number %zu.\n", fwm.clients_num);
+				FWM_DLOG("Adding client number %zu.\n", fwm.clients_num);
 
 				fwm.clients[fwm.clients_num].fd = accept(fwm.socket_fd, NULL, 0);
 				/* Set the time of connection for this client */
@@ -115,7 +114,7 @@ void fwm_initialize(void) {
 	fwm_initialize_env();
 	fwm_initialize_files();
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Initializing fwm.\n", fwm.exec_shell);
+	FWM_DLOG("Initializing fwm.\n", fwm.exec_shell);
 
 	fwm_set_signal_handler(fwm_signal_handler);
 
@@ -128,7 +127,7 @@ void fwm_initialize(void) {
 			fwm.exec_shell = FWM_EXEC_SHELL;
 	}
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Exec shell set to \"%s\".\n", fwm.exec_shell);
+	FWM_DLOG("Exec shell set to \"%s\".\n", fwm.exec_shell);
 
 	fwm.socket_fd = -1;
 
@@ -173,14 +172,14 @@ void fwm_initialize_x(void) {
                                                                                             XCB_CW_EVENT_MASK,
                                                                                             &(uint32_t){ FWM_ROOT_EVENT_MASK }));
 	if (error) {
-		fwm_log(FWM_LOG_ERROR, "Could not register for substructure redirection. Is another window manager running?\n");
+		FWM_ELOG("Could not register for substructure redirection. Is another window manager running?\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 }
 
 void fwm_initialize_socket(void) {
 	if ((fwm.socket_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Socket creation failed.\n");
+		FWM_ELOG("Socket creation failed.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 
@@ -195,24 +194,24 @@ void fwm_initialize_socket(void) {
 
 	free(host_name);
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Socket path set to \"%s\".\n", fwm.socket_address.sun_path);
+	FWM_DLOG("Socket path set to \"%s\".\n", fwm.socket_address.sun_path);
 
 	if (ret > (int)(sizeof fwm.socket_address.sun_path - 1)) {
 		fwm_log(FWM_LOG_WARNING, "Socket path is too long.\n");
 	} else if (ret < 0) {
-		fwm_log(FWM_LOG_ERROR, "Failed to write socket path.\n");
+		FWM_ELOG("Failed to write socket path.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 
 	remove(fwm.socket_address.sun_path);
 
 	if (bind(fwm.socket_fd, (struct sockaddr*)(&fwm.socket_address), sizeof fwm.socket_address) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Socket binding failed.\n");
+		FWM_ELOG("Socket binding failed.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 
 	if (listen(fwm.socket_fd, SOMAXCONN) == -1) {
-		fwm_log(FWM_LOG_ERROR, "Listening to the socket failed.\n");
+		FWM_ELOG("Listening to the socket failed.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 }
@@ -220,7 +219,7 @@ void fwm_initialize_socket(void) {
 void fwm_initialize_poll_fds(void) {
 	fwm.poll_fds = calloc(2 + FWM_MAX_CLIENTS, sizeof (struct pollfd));
 	if (!fwm.poll_fds) {
-		fwm_log(FWM_LOG_ERROR, "Failed to allocate poll structures.\n");
+		FWM_ELOG("Failed to allocate poll structures.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 
@@ -239,7 +238,7 @@ void fwm_initialize_clients(void) {
 	fwm.clients_num = 0;
 	fwm.client_connection_times = calloc(FWM_MAX_CLIENTS, sizeof (time_t));
 	if (!fwm.client_connection_times) {
-		fwm_log(FWM_LOG_ERROR, "Failed to allocate memory for client connection times.\n");
+		FWM_ELOG("Failed to allocate memory for client connection times.\n");
 		fwm_exit(EXIT_FAILURE);
 	}
 }
@@ -259,7 +258,7 @@ void fwm_signal_handler(int signal) {
 	if (signal == SIGCHLD) {
 		while (waitpid(-1, NULL, WNOHANG) > 0);
 	} else {
-		fwm_log(FWM_LOG_DIAGNOSTIC, "Signal %i received.\n", signal);
+		FWM_DLOG("Signal %i received.\n", signal);
 		fwm_exit(EXIT_SUCCESS);
 	}
 }
@@ -277,7 +276,7 @@ void fwm_connection_has_error(void) {
 			[XCB_CONN_CLOSED_FDPASSING_FAILED] = "File descriptor passing failed",
 		};
 
-		fwm_log(FWM_LOG_ERROR, "Connecting to the X server failed: %s (%u).\n", error_strings[error_code], error_code);
+		FWM_ELOG("Connecting to the X server failed: %s (%u).\n", error_strings[error_code], error_code);
 		fwm_exit(error_code);
 	}
 }
@@ -296,7 +295,7 @@ void fwm_close_files(void) {
 }
 
 void fwm_exit(int status) {
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Exiting fwm.\n");
+	FWM_DLOG("Exiting fwm.\n");
 
 	if (fwm.keybinds)
 		fwm_remove_all_keybinds();

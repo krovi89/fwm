@@ -70,7 +70,7 @@ static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen) {
 
 		if (!fwm_is_dir(copy))
 			if (mkdir(copy, mode) == -1) {
-				fwm_log(FWM_LOG_ERROR, "Failed to create directory \"%s\": %s\n", copy, strerror(errno));
+				FWM_ELOG("Failed to create directory \"%s\": %s\n", copy, strerror(errno));
 				free(copy);
 				return false;
 			}
@@ -109,7 +109,7 @@ bool fwm_mkdir_data(const char *path) {
 	if (!fwm_mkdir(path, 0700, strlen(path)))
 		return false;
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Created data directory \"%s\".\n", path);
+	FWM_DLOG("Created data directory \"%s\".\n", path);
 	return true;
 }
 
@@ -128,10 +128,10 @@ FILE *fwm_open_log_file(const char *path) {
 
 	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
-		fwm_log(FWM_LOG_ERROR, "Failed to open file \"%s\": %s\n", path, strerror(errno));
+		FWM_ELOG("Failed to open file \"%s\": %s\n", path, strerror(errno));
 		return NULL;
 	}
 
-	fwm_log(FWM_LOG_DIAGNOSTIC, "Opened log file \"%s\".\n", path);
+	FWM_DLOG("Opened log file \"%s\".\n", path);
 	return log_file;
 }
