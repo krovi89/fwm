@@ -3,9 +3,10 @@
 
 #include <xcb/xproto.h>
 
-#include "close_focused.h"
 #include "../fwm.h"
 #include "../actions.h"
+
+#include "close_focused.h"
 
 bool fwm_validate_action_close_focused(const uint8_t **action_ptr, int *length_ptr) {
 	const uint8_t *action = *action_ptr;

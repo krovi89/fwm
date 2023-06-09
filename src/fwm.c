@@ -17,8 +17,8 @@
 
 #include "fwm.h"
 #include "events.h"
-#include "keybinds.h"
 #include "messages.h"
+#include "keybinds.h"
 #include "actions.h"
 #include "files.h"
 #include "log.h"

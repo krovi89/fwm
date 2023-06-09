@@ -51,7 +51,7 @@ struct fwm {
 	size_t  clients_num;
 	time_t *client_connection_times;
 
-	// should be moved to an options struct
+	/* should be moved to an options struct */
 	char *exec_shell;
 	bool show_diagnostics;
 

@@ -3,8 +3,8 @@
 
 #include <xcb/xproto.h>
 
-#include "keybinds.h"
 #include "fwm.h"
+#include "keybinds.h"
 #include "actions.h"
 
 bool fwm_assimilate_keybind(struct fwm_keybind *new) {

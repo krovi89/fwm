@@ -3,8 +3,8 @@
 
 #include <xcb/xproto.h>
 
-#include "actions.h"
 #include "fwm.h"
+#include "actions.h"
 
 #include "actions/close_focused.h"
 #include "actions/execute.h"

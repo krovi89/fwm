@@ -6,10 +6,10 @@
 #include <sys/socket.h>
 #include <xcb/xproto.h>
 
-#include "messages.h"
 #include "fwm.h"
-#include "actions.h"
+#include "messages.h"
 #include "keybinds.h"
+#include "actions.h"
 #include "log.h"
 
 #include "actions/execute.h"

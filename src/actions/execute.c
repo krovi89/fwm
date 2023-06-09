@@ -5,11 +5,12 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "execute.h"
 #include "../fwm.h"
 #include "../actions.h"
 #include "../files.h"
 #include "../log.h"
+
+#include "execute.h"
 
 struct fwm_action_arguments {
 	char *command;
@@ -74,12 +75,12 @@ void fwm_run_action_execute(struct fwm_action_arguments *arguments, xcb_window_t
 		char *command[4] = { fwm.exec_shell, "-c", arguments->command, NULL };
 		FWM_DLOG("Executing \"%s\".\n", command[0]);
 
-		fwm_set_signal_handler(SIG_DFL); // no real reason to do this
-		fwm_close_files();
+		fwm_set_signal_handler(SIG_DFL); /* no real reason to do this */
+		fwm_close_files(); /* ideally would set CLOEXEC on those file descriptors */
 
 		execvp(command[0], command);
 
-		fwm.files.log_file = fwm_open_log_file(fwm.files.log_file_path);
+		fwm_open_log_file(fwm.files.log_file_path);
 		FWM_ELOG("Failed to execute \"%s\".\n", command[0]);
 		if (fwm.files.log_file) fclose(fwm.files.log_file);
 

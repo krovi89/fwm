@@ -3,10 +3,10 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
-#include "events.h"
 #include "fwm.h"
-#include "actions.h"
+#include "events.h"
 #include "keybinds.h"
+#include "actions.h"
 
 void fwm_handle_event(xcb_generic_event_t *event) {
 	switch (event->response_type) {

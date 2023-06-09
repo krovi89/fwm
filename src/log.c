@@ -14,12 +14,11 @@ static int fwm_log_va_list(FILE *stream,
                            va_list arg) {
 	int ret = 0;
 
-	struct tm *tm = localtime(&(time_t){ time(NULL) });
-
 	if (fwm.files.log_file) {
 		va_list ag;
 		va_copy(ag, arg);
 
+		struct tm *tm = localtime(&(time_t){ time(NULL) });
 		fprintf(fwm.files.log_file, "[%i/%02i/%02i %02i:%02i:%02i] %s: ", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
 		                                                                  tm->tm_hour, tm->tm_min, tm->tm_sec,
 		                                                                  type);
