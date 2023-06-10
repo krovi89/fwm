@@ -120,7 +120,17 @@ bool fwm_build_log_path(char *buf, size_t buflen) {
 }
 
 bool fwm_open_log_file(char *path) {
-	if (!path || path[0] == '\0') return false;
+	char *previous_path = NULL;
+
+	if (path) {
+		if (path[0] != '\0')
+			previous_path = path;
+		else
+			return false;
+	}
+
+	if (!path && previous_path)
+		path = previous_path;
 
 	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
@@ -132,7 +142,6 @@ bool fwm_open_log_file(char *path) {
 		fclose(fwm.files.log_file);
 
 	fwm.files.log_file = log_file;
-	fwm.files.log_file_path = path;
 
 	FWM_DLOG("Opened log file \"%s\".\n", path);
 	return true;

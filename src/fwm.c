@@ -127,7 +127,7 @@ void fwm_initialize(void) {
 			fwm.exec_shell = FWM_EXEC_SHELL;
 	}
 
-	FWM_DLOG("Exec shell set to \"%s\".\n", fwm.exec_shell);
+	FWM_DLOG("Execution shell set to \"%s\".\n", fwm.exec_shell);
 
 	fwm.socket_fd = -1;
 

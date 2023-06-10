@@ -80,7 +80,7 @@ void fwm_run_action_execute(struct fwm_action_arguments *arguments, xcb_window_t
 
 		execvp(command[0], command);
 
-		fwm_open_log_file(fwm.files.log_file_path);
+		fwm_open_log_file(NULL);
 		FWM_ELOG("Failed to execute \"%s\".\n", command[0]);
 		if (fwm.files.log_file) fclose(fwm.files.log_file);
 

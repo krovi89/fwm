@@ -10,7 +10,6 @@
 struct fwm_files {
 	char *data_dir;
 
-	char *log_file_path;
 	FILE *log_file;
 };
 
