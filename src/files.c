@@ -14,20 +14,19 @@ static uint8_t fwm_is_dir(const char *path);
 static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen);
 
 void fwm_initialize_files(void) {
-	/* this is awful */
 	static char data_dir_buf[4096];
 	static char log_file_path_buf[4096];
 
 	if (fwm.env.data_dir)
 		fwm_mkdir_data(fwm.env.data_dir);
 	else
-		if (fwm_build_data_dir(data_dir_buf, sizeof data_dir_buf))
+		if (fwm_build_data_path(data_dir_buf, sizeof data_dir_buf))
 			fwm_mkdir_data(data_dir_buf);
 
 	if (fwm.env.log_file_path)
 		fwm_open_log_file(fwm.env.log_file_path);
 	else
-		if (fwm_build_log_file_path(log_file_path_buf, sizeof log_file_path_buf))
+		if (fwm_build_log_path(log_file_path_buf, sizeof log_file_path_buf))
 			fwm_open_log_file(log_file_path_buf);
 }
 
@@ -78,16 +77,17 @@ static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen) {
 	return true;
 }
 
-bool fwm_build_data_dir(char *buf, size_t buflen) {
+bool fwm_build_data_path(char *buf, size_t buflen) {
 	if (!buf) return false;
 
 	int ret;
-	if (fwm.env.xdg_data_home) {
-		if (fwm.env.xdg_data_home[0] == '\0') return false;
+	if (fwm.env.xdg_data_home && fwm.env.xdg_data_home[0] != '\0') {
 		ret = snprintf(buf, buflen, "%s/fwm", fwm.env.xdg_data_home);
-	} else {
-		if (!fwm.env.home || fwm.env.home[0] == '\0') return false;
+	} else if (fwm.env.home && fwm.env.home[0] != '\0') {
 		ret = snprintf(buf, buflen, "%s/%s", fwm.env.home, FWM_DATA_DIR);
+	} else {
+		FWM_ELOG("Could not determine the data directory's path (HOME and XDG_DATA_HOME either unset or empty)");
+		return false;
 	}
 
 	if ((ret > (int)(buflen - 1)) || ret < 0)
@@ -108,8 +108,9 @@ bool fwm_mkdir_data(char *path) {
 	return true;
 }
 
-bool fwm_build_log_file_path(char *buf, size_t buflen) {
+bool fwm_build_log_path(char *buf, size_t buflen) {
 	if (!buf) return false;
+	if (!fwm.files.data_dir) return false;
 
 	int ret = snprintf(buf, buflen, "%s/%s", fwm.files.data_dir, FWM_LOG_FILE);
 	if ((ret > (int)(buflen - 1)) || ret < 0)
