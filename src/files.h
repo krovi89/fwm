@@ -8,17 +8,17 @@
 #define FWM_LOG_FILE "fwm.log"
 
 struct fwm_files {
-	char *data_dir;
+	const char *data_dir;
 
 	FILE *log_file;
 };
 
 void fwm_initialize_files(void);
 
-bool fwm_build_data_path(char *buf, size_t buflen);
-bool fwm_mkdir_data(char *path);
+const char *fwm_default_data_path(void);
+bool fwm_mkdir_data(const char *path);
 
-bool fwm_build_log_path(char *buf, size_t buflen);
-bool fwm_open_log_file(char *path);
+const char *fwm_default_log_path(void);
+bool fwm_open_log_file(const char *path);
 
 #endif

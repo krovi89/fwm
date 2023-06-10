@@ -14,20 +14,15 @@ static uint8_t fwm_is_dir(const char *path);
 static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen);
 
 void fwm_initialize_files(void) {
-	static char data_dir_buf[4096];
-	static char log_file_path_buf[4096];
-
 	if (fwm.env.data_dir)
 		fwm_mkdir_data(fwm.env.data_dir);
 	else
-		if (fwm_build_data_path(data_dir_buf, sizeof data_dir_buf))
-			fwm_mkdir_data(data_dir_buf);
+		fwm_mkdir_data(fwm_default_data_path());
 
 	if (fwm.env.log_file_path)
 		fwm_open_log_file(fwm.env.log_file_path);
 	else
-		if (fwm_build_log_path(log_file_path_buf, sizeof log_file_path_buf))
-			fwm_open_log_file(log_file_path_buf);
+		fwm_open_log_file(fwm_default_log_path());
 }
 
 static uint8_t fwm_is_dir(const char *path) {
@@ -77,8 +72,12 @@ static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen) {
 	return true;
 }
 
-bool fwm_build_data_path(char *buf, size_t buflen) {
-	if (!buf) return false;
+const char *fwm_default_data_path(void) {
+	static char buf[4096] = { 0 };
+	size_t buflen = sizeof buf;
+
+	if (buf[0] != 0)
+		return buf;
 
 	int ret;
 	if (fwm.env.xdg_data_home && fwm.env.xdg_data_home[0] != '\0') {
@@ -87,20 +86,35 @@ bool fwm_build_data_path(char *buf, size_t buflen) {
 		ret = snprintf(buf, buflen, "%s/%s", fwm.env.home, FWM_DATA_DIR);
 	} else {
 		FWM_ELOG("Could not determine the data directory's path (HOME and XDG_DATA_HOME either unset or empty)");
-		return false;
+		return NULL;
 	}
 
 	if ((ret > (int)(buflen - 1)) || ret < 0)
-		return false;
+		return NULL;
 
-	return true;
+	return buf;
 }
 
-bool fwm_mkdir_data(char *path) {
+const char *fwm_default_log_path(void) {
+	if (!fwm.files.data_dir) return NULL;
+
+	static char buf[4096];
+	size_t buflen = sizeof buf;
+
+	int ret = snprintf(buf, buflen, "%s/%s", fwm.files.data_dir, FWM_LOG_FILE);
+	if ((ret > (int)(buflen - 1)) || ret < 0)
+		return NULL;
+
+	return buf;
+}
+
+bool fwm_mkdir_data(const char *path) {
 	if (!path || path[0] == '\0') return false;
 
-	if (!fwm_mkdir(path, 0700, strlen(path)))
+	if (!fwm_mkdir(path, 0700, strlen(path))) {
+		FWM_ELOG("Failed to create data directory \"%s\".\n", path);
 		return false;
+	}
 
 	fwm.files.data_dir = path;
 
@@ -108,19 +122,8 @@ bool fwm_mkdir_data(char *path) {
 	return true;
 }
 
-bool fwm_build_log_path(char *buf, size_t buflen) {
-	if (!buf) return false;
-	if (!fwm.files.data_dir) return false;
-
-	int ret = snprintf(buf, buflen, "%s/%s", fwm.files.data_dir, FWM_LOG_FILE);
-	if ((ret > (int)(buflen - 1)) || ret < 0)
-		return false;
-
-	return true;
-}
-
-bool fwm_open_log_file(char *path) {
-	char *previous_path = NULL;
+bool fwm_open_log_file(const char *path) {
+	static const char *previous_path = NULL;
 
 	if (path) {
 		if (path[0] != '\0')
@@ -129,12 +132,16 @@ bool fwm_open_log_file(char *path) {
 			return false;
 	}
 
-	if (!path && previous_path)
-		path = previous_path;
+	if (!path) {
+		if (previous_path)
+			path = previous_path;
+		else
+			return false;
+	}
 
 	FILE *log_file = fopen(path, "a");
 	if (!log_file) {
-		FWM_ELOG("Failed to open file \"%s\": %s\n", path, strerror(errno));
+		FWM_ELOG("Failed to open log file \"%s\": %s\n", path, strerror(errno));
 		return false;
 	}
 
