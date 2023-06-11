@@ -29,7 +29,7 @@ struct fwm_env {
 	char *xdg_data_home;
 
 	char *data_dir;
-	char *log_file_path;
+	char *log_file;
 
 	char *shell;
 	char *exec_shell;

@@ -19,8 +19,8 @@ void fwm_initialize_files(void) {
 	else
 		fwm_mkdir_data(fwm_default_data_path());
 
-	if (fwm.env.log_file_path)
-		fwm_open_log_file(fwm.env.log_file_path);
+	if (fwm.env.log_file)
+		fwm_open_log_file(fwm.env.log_file);
 	else
 		fwm_open_log_file(fwm_default_log_path());
 }

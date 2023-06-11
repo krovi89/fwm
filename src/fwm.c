@@ -148,7 +148,7 @@ void fwm_initialize_env(void) {
 	fwm.env.home = getenv("HOME");
 	fwm.env.xdg_data_home = getenv("XDG_DATA_HOME");
 	fwm.env.data_dir = getenv("FWM_DATA_DIR");
-	fwm.env.log_file_path = getenv("FWM_LOG_FILE");
+	fwm.env.log_file = getenv("FWM_LOG_FILE");
 	fwm.env.shell = getenv("SHELL");
 	fwm.env.exec_shell = getenv("FWM_EXEC_SHELL");
 }
