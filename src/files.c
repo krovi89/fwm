@@ -10,7 +10,7 @@
 #include "files.h"
 #include "log.h"
 
-static uint8_t fwm_is_dir(const char *path);
+static bool fwm_is_dir(const char *path);
 static bool fwm_mkdir(const char *dir, unsigned int mode, size_t dirlen);
 
 void fwm_initialize_files(void) {
@@ -25,7 +25,7 @@ void fwm_initialize_files(void) {
 		fwm_open_log_file(fwm_default_log_path());
 }
 
-static uint8_t fwm_is_dir(const char *path) {
+static bool fwm_is_dir(const char *path) {
 	struct stat statbuf;
 	if (stat(path, &statbuf) == -1) return false;
 	if (S_ISDIR(statbuf.st_mode)) return true;

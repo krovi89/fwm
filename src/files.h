@@ -16,9 +16,9 @@ struct fwm_files {
 void fwm_initialize_files(void);
 
 const char *fwm_default_data_path(void);
-bool fwm_mkdir_data(const char *path);
-
 const char *fwm_default_log_path(void);
+
+bool fwm_mkdir_data(const char *path);
 bool fwm_open_log_file(const char *path);
 
 #endif
